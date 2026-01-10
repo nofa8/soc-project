@@ -35,6 +35,8 @@ COPY --from=builder --chown=appuser:appuser /app /app
 
 # 4. Create logs directory and ensure permissions are correct
 # We give ownership to appuser and the root group (GID 0) for OpenShift/K8s compatibility
+USER root
+
 RUN mkdir -p /app/logs && \
     chown -R appuser:appuser /app/logs && \
     chmod -R 775 /app/logs
