@@ -21,30 +21,33 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # --- Final Runtime Image ---
 FROM python:3.13-slim-bookworm
 
-# 1. Create a non-root user for security (SOC standard)
+# Create a non-root user for security (SOC standard)
 RUN useradd -m -u 1000 appuser
 
 WORKDIR /app
 
-# 2. Set environment variables
+# Set environment variables
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1
 
-# 3. Copy the synchronized app from builder and set ownership to our new user
+# Copy the synchronized app from builder and set ownership to our new user
 COPY --from=builder --chown=appuser:appuser /app /app
 
-# 4. Create logs directory and ensure permissions are correct
-# We give ownership to appuser and the root group (GID 0) for OpenShift/K8s compatibility
+# Install gosu
+RUN apt-get update && \
+    apt-get install -y gosu && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy entrypoint script. This script will create /app/logs and fix permissions at runtime
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Start as root to bind-mount permissions
 USER root
+# Set entrypoint to handle permissions and drop privileges
+ENTRYPOINT ["docker-entrypoint.sh"]
 
-RUN mkdir -p /app/logs && \
-    chown -R appuser:appuser /app/logs && \
-    chmod -R 775 /app/logs
-
-# 5. Switch to the non-root user
-USER appuser
-
+# Run the app
 EXPOSE 8000
-
-# 6. Run the app
+# Params passed to docker-entrypoint.sh
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

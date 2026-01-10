@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   # =============================
   # APPLICATION & INFRASTRUCTURE
@@ -49,12 +47,11 @@ services:
   # =============================
   # SECURITY & MONITORING
   # =============================
-
   ids-suricata:
     image: jasonish/suricata:latest
     container_name: ids-suricata
     user: root
-    network_mode: host
+    network_mode: ${SURICATA_NETWORK_MODE:-host} # fallback to host if not set
     cap_add:
       - NET_ADMIN
       - SYS_NICE
@@ -62,7 +59,7 @@ services:
     volumes:
       - ./suricata:/etc/suricata:z
       - ./logs/suricata:/var/log/suricata:z
-    command: -i enp12s0
+    command: ${SURICATA_COMMAND}
 
   wazuh-manager:
     image: wazuh/wazuh-manager:4.7.2
@@ -79,7 +76,7 @@ services:
     image: docker.elastic.co/beats/filebeat:8.11.1
     container_name: filebeat
     user: root
-    command: [ "filebeat", "-e", "-strict.perms=false" ]
+    command: ["filebeat", "-e", "-strict.perms=false"]
     depends_on:
       - wazuh-manager
     volumes:
