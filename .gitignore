@@ -1,0 +1,6 @@
+# Ignore all logs
+logs/
+# Ignore Docker internal data
+wazuh-data/
+# Ignore local environment secrets
+.env

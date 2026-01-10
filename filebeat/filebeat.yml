@@ -1,0 +1,30 @@
+filebeat.inputs:
+  - type: log
+    enabled: true
+    paths:
+      - /logs/api/security.json
+    json.keys_under_root: true
+    json.add_error_key: true
+    fields:
+      log_source: api
+    fields_under_root: true
+
+  - type: log
+    enabled: true
+    paths:
+      - /logs/nginx/*.log
+    fields:
+      log_source: nginx
+    fields_under_root: true
+
+  - type: log
+    enabled: true
+    paths:
+      - /logs/suricata/eve.json
+    json.keys_under_root: true
+    fields:
+      log_source: suricata
+    fields_under_root: true
+
+output.logstash:
+  hosts: ["wazuh-manager:1514"]
