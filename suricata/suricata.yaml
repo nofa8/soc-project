@@ -29,7 +29,7 @@ outputs:
   - eve-log:
       enabled: yes
       filetype: regular
-      filename: /var/log/suricata/eve.json
+      filename: /var/log/suricata/eve.jsonl
       pcap-file: false
       community-id: true
       community-id-seed: 0
