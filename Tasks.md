@@ -105,9 +105,9 @@
 
 | Task | Status | Priority |
 |------|--------|----------|
-| Add Elasticsearch to docker-compose | ⏳ | **HIGH** |
-| Add Kibana to docker-compose | ⏳ | **HIGH** |
-| Configure index templates | ⏳ | Medium |
+| Add Elasticsearch to docker-compose | ✅ | **HIGH** |
+| Add Kibana to docker-compose | ✅ | **HIGH** |
+| Configure index templates | ✅ | Medium |
 
 **Why this matters:** Required for dashboards, mandatory for **15% events/alerts/reports**
 
@@ -117,9 +117,9 @@
 
 | Task | Status | Notes |
 |------|--------|-------|
-| Decide: Filebeat → Wazuh vs → Elasticsearch | ⏳ | Recommend ES for dashboards |
-| Configure Filebeat output | ⏳ | After ES is running |
-| Validate log ingestion | ⏳ | Check index patterns |
+| Decide: Filebeat → Wazuh vs → Elasticsearch | ✅ | Filebeat → Elasticsearch |
+| Configure Filebeat output | ✅ | soc-logs-* index pattern |
+| Validate log ingestion | ✅ | 10K+ docs in soc-logs index |
 
 ---
 

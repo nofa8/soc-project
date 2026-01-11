@@ -20,11 +20,16 @@ filebeat.inputs:
   - type: log
     enabled: true
     paths:
-      - /logs/suricata/eve.json
+      - /logs/suricata/eve.jsonl
     json.keys_under_root: true
     fields:
       log_source: suricata
     fields_under_root: true
 
-output.logstash:
-  hosts: ["wazuh-manager:1514"]
+output.elasticsearch:
+  hosts: ["elasticsearch:9200"]
+  index: "soc-logs-%{+yyyy.MM.dd}"
+
+setup.template.name: "soc-logs"
+setup.template.pattern: "soc-logs-*"
+setup.ilm.enabled: false
