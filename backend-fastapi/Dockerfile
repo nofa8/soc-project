@@ -45,7 +45,7 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 # Start as root to bind-mount permissions
 USER root
 # Set entrypoint to handle permissions and drop privileges
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+ENTRYPOINT ["docker-entrypoint.sh"]
 
 # Run the app
 EXPOSE 8000
