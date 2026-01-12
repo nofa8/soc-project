@@ -1,13 +1,42 @@
+import uuid
 from fastapi import FastAPI, Request, HTTPException
 from .logger import logger
-from .middleware import SecurityLoggingMiddleware
 
 app = FastAPI(title="SafePay API", version="1.0.0", description="SafePay API")
-app.add_middleware(SecurityLoggingMiddleware)
+
+# --- REPLACEMENT MIDDLEWARE ---
+@app.middleware("http")
+async def security_logging_middleware(request: Request, call_next):
+    # 1. Generate and attach request ID
+    request_id = str(uuid.uuid4())
+    request.state.request_id = request_id
+
+    # 2. Process the request
+    response = await call_next(request)
+
+    # 3. Log the final telemetry
+    logger.info(
+        "HTTP request processed",
+        extra={
+            "component": "http-gateway",
+            "event": "http_request",
+            "src_ip": request.client.host,
+            "request_id": request_id,
+            "path": request.url.path,
+            "method": request.method,
+            "status_code": response.status_code
+        }
+    )
+    return response
 
 @app.post("/login")
 async def login(request: Request):
-    data = await request.json()
+    try:
+        data = await request.json()
+    except Exception:
+        # Prevents 500 errors if the body is empty or invalid
+        raise HTTPException(status_code=400, detail="Invalid or missing JSON body")
+
     username = data.get("username", "unknown")
     password = data.get("password", "")
     client_ip = request.client.host
