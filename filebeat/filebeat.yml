@@ -38,6 +38,7 @@ filebeat.inputs:
 output.elasticsearch:
   hosts: ["wazuh.indexer:9200"]
   protocol: "http"
+  ssl.enabled: false
   index: "soc-logs-%{+yyyy.MM.dd}"
 
 setup.template.name: "soc-logs"
