@@ -1,11 +1,12 @@
 # --------------------
 # Configuration (defaults)
 # --------------------
+SUDO      ?= sudo
 TARGET_IP ?= 192.0.2.10
 NETWORK   ?= 192.0.2.0/24
 API_URL   ?= http://192.0.2.10
 
--include env
+-include .env
 
 # --------------------
 # Phony targets
@@ -50,24 +51,25 @@ nmap-host:
 
 nmap-ports:
 	@echo "[NMAP] TCP port scan on $(TARGET_IP)"
-	nmap -sS $(TARGET_IP)
+	$(SUDO) nmap -sS $(TARGET_IP)
 	@echo ""
 
 nmap-services:
 	@echo "[NMAP] Service and version detection on $(TARGET_IP)"
-	nmap -sV $(TARGET_IP)
+	$(SUDO) nmap -sV $(TARGET_IP)
 	@echo ""
 
 
 # HELP
 help:
 	@echo "Available targets:"
-	@echo "  make                  Run all API and network tests"
-	@echo "  make api-tests        Run API security tests only"
-	@echo "  make network-tests    Run Nmap-based network tests"
-	@echo "  make nmap-ports       Run TCP port scan"
+	@echo "  make                Run all API and network tests"
+	@echo "  make api-tests      Run API security tests only"
+	@echo "  make network-tests  Run Nmap-based network tests"
+	@echo "  make nmap-ports     Run TCP port scan"
 	@echo ""
 	@echo "Configurable variables:"
-	@echo "  TARGET_IP   (default: 192.0.2.10)"
-	@echo "  NETWORK     (default: 192.0.2.0/24)"
-	@echo "  API_URL     (default: http://192.0.2.10)"
+	@echo "  SUDO      (default: sudo)"
+	@echo "  TARGET_IP (default: 192.0.2.10)"
+	@echo "  NETWORK   (default: 192.0.2.0/24)"
+	@echo "  API_URL   (default: http://192.0.2.10)"
