@@ -26,8 +26,18 @@ filebeat.inputs:
       log_source: suricata
     fields_under_root: true
 
+  - type: log
+    enabled: true
+    paths:
+      - /usr/share/filebeat/wazuh-logs/alerts/alerts.json
+    json.keys_under_root: true
+    fields:
+      log_source: wazuh-alerts
+    fields_under_root: true
+
 output.elasticsearch:
-  hosts: ["elasticsearch:9200"]
+  hosts: ["wazuh.indexer:9200"]
+  protocol: "http"
   index: "soc-logs-%{+yyyy.MM.dd}"
 
 setup.template.name: "soc-logs"

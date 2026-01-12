@@ -1,13 +1,13 @@
 <group name="soc,api">
 
   <rule id="100001" level="3">
-    <decoded_as>json</decoded_as>
+    <if_matched_sid>json</if_matched_sid>
     <field name="event">login_success</field>
     <description>Successful API Login</description>
   </rule>
 
   <rule id="100002" level="5">
-    <decoded_as>json</decoded_as>
+    <if_matched_sid>json</if_matched_sid>
     <field name="event">login_failed</field>
     <description>Failed API Login</description>
   </rule>
@@ -23,7 +23,7 @@
   </rule>
 
   <rule id="100005" level="7">
-    <field name="status_code">500</field>
+    <field name="status">500</field>
     <field name="component">api</field>
     <description>API Error / Anomalous Behavior</description>
   </rule>
