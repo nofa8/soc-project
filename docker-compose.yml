@@ -47,11 +47,36 @@ services:
   # =============================
   # SECURITY & MONITORING
   # =============================
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      default:
+        aliases:
+          - wazuh.indexer
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q 'green\\|yellow'" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
   ids-suricata:
     image: jasonish/suricata:latest
     container_name: ids-suricata
     user: root
-    network_mode: ${SURICATA_NETWORK_MODE:-host} # fallback to host if not set
+    network_mode: ${SURICATA_NETWORK_MODE:-host}
     cap_add:
       - NET_ADMIN
       - SYS_NICE
@@ -62,26 +87,66 @@ services:
     command: ${SURICATA_COMMAND}
 
   wazuh-manager:
-    image: wazuh/wazuh-manager:4.7.2
+    image: wazuh/wazuh-manager:4.14.1
     container_name: wazuh-manager
     ports:
       - "1514:1514/tcp"
+      - "1515:1515/tcp"
       - "55000:55000"
     volumes:
       - wazuh-data:/var/ossec/data
-      - ./wazuh/ossec.conf:/var/ossec/etc/ossec.conf:z
+      - wazuh-logs:/var/ossec/logs/alerts
+      - ./config/wazuh_cluster/wazuh_manager.conf:/wazuh-config-mount/etc/ossec.conf
       - ./wazuh/custom-rules.xml:/var/ossec/etc/rules/custom_rules.xml:z
+      - ./wazuh/local_internal_options.conf:/var/ossec/etc/local_internal_options.conf:z
+      - ./config/wazuh_manager/filebeat-service:/etc/services.d/filebeat:ro
+
+  wazuh-agent:
+    image: wazuh/wazuh-agent:4.14.1
+    container_name: wazuh-agent
+    hostname: soc-agent
+    environment:
+      - WAZUH_MANAGER=wazuh-manager
+    volumes:
+      - ./config/agent/ossec.conf:/wazuh-config-mount/etc/ossec.conf
+      - ./logs:/var/log/soc_logs:ro
+    depends_on:
+      - wazuh-manager
+
+  # =============================
+  # SIEM & VISUALIZATION
+  # =============================
+  # elasticsearch: Moved to SECURITY & MONITORING section above (aliased as wazuh.indexer)
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.1
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - XPACK_SECURITY_ENABLED=false
+      - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=UfR2qXwQJQ8UgAfs/Ayz5IJ3rsCwmhBrAbJ0AKH8h88=
+    ports:
+      - "5601:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
 
   filebeat:
     image: docker.elastic.co/beats/filebeat:8.11.1
     container_name: filebeat
     user: root
-    command: ["filebeat", "-e", "-strict.perms=false"]
+    #environment:
+    #  - ELASTICSEARCH_HOST=http://wazuh.indexer:9200
+    command: [ "filebeat", "-e", "-strict.perms=false" ]
     depends_on:
-      - wazuh-manager
+      elasticsearch:
+        condition: service_healthy
     volumes:
       - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro,z
       - ./logs:/logs:ro,z
+      - wazuh-logs:/usr/share/filebeat/wazuh-logs/alerts:ro
 
 volumes:
   wazuh-data:
+  elasticsearch-data:
+  wazuh-logs:

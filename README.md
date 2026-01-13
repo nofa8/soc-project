@@ -154,7 +154,7 @@ soc-project/
 | FastAPI | Security events (JSON) | `logs/api/security.json` |
 | Nginx | Access logs (JSON) | `logs/nginx/access.log` |
 | Nginx | Error logs | `logs/nginx/error.log` |
-| Suricata | EVE alerts (JSON) | `logs/suricata/eve.json` |
+| Suricata | EVE alerts (JSON) | `logs/suricata/eve.jsonl` |
 | Suricata | Stats | `logs/suricata/stats.log` |
 
 ---
@@ -232,7 +232,7 @@ make network-tests TARGET_IP=192.0.2.5 NETWORK=192.0.2.0/24
 docker logs ids-suricata
 
 # View alerts
-tail -f logs/suricata/eve.json | jq '.alert'
+tail -f logs/suricata/eve.jsonl | jq '.alert'
 ```
 
 ### Manual API Testing

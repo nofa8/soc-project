@@ -1,0 +1,6 @@
+#!/usr/bin/with-contenv sh
+# Filebeat is disabled inside this container because an external Filebeat agent
+# is used for log shipping. Keeping the container running avoids the need for
+# building a custom image just to remove the internal Filebeat.
+echo >&2 "Filebeat disabled; use external Filebeat."
+sleep infinity

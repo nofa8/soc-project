@@ -1,0 +1,4 @@
+#!/usr/bin/with-contenv sh
+# Do nothing on finish, avoid killing container
+echo >&2 "Filebeat disabled; code=${1}"
+exit 0

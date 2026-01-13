@@ -1,13 +1,42 @@
+import uuid
 from fastapi import FastAPI, Request, HTTPException
 from .logger import logger
-from .middleware import SecurityLoggingMiddleware
 
 app = FastAPI(title="SafePay API", version="1.0.0", description="SafePay API")
-app.add_middleware(SecurityLoggingMiddleware)
+
+# --- REPLACEMENT MIDDLEWARE ---
+@app.middleware("http")
+async def security_logging_middleware(request: Request, call_next):
+    # 1. Generate and attach request ID
+    request_id = str(uuid.uuid4())
+    request.state.request_id = request_id
+
+    # 2. Process the request
+    response = await call_next(request)
+
+    # 3. Log the final telemetry
+    logger.info(
+        "HTTP request processed",
+        extra={
+            "component": "http-gateway",
+            "soc_event": "http_request",
+            "src_ip": request.client.host,
+            "request_id": request_id,
+            "path": request.url.path,
+            "method": request.method,
+            "status_code": response.status_code
+        }
+    )
+    return response
 
 @app.post("/login")
 async def login(request: Request):
-    data = await request.json()
+    try:
+        data = await request.json()
+    except Exception:
+        # Prevents 500 errors if the body is empty or invalid
+        raise HTTPException(status_code=400, detail="Invalid or missing JSON body")
+
     username = data.get("username", "unknown")
     password = data.get("password", "")
     client_ip = request.client.host
@@ -18,7 +47,7 @@ async def login(request: Request):
             "Authentication failed",
             extra={
                 "component": "auth-engine",
-                "event": "login_failed",
+                "soc_event": "login_failed",
                 "src_ip": client_ip,
                 "username": username,
                 "request_id": request_id,
@@ -31,7 +60,7 @@ async def login(request: Request):
         "Authentication success",
         extra={
             "component": "auth-engine",
-            "event": "login_success",
+            "soc_event": "login_success",
             "src_ip": client_ip,
             "username": username,
             "request_id": request_id
@@ -46,7 +75,7 @@ async def read_item(item_id: str, request: Request):
         "Resource access",
         extra={
             "component": "api-engine",
-            "event": "access_resource",
+            "soc_event": "access_resource",
             "src_ip": request.client.host,
             "request_id": request.state.request_id,
             "resource_id": item_id
@@ -59,7 +88,7 @@ async def read_item(item_id: str, request: Request):
             "Suspicious query pattern detected",
             extra={
                 "component": "api-engine",
-                "event": "possible_sqli",
+                "soc_event": "possible_sqli",
                 "src_ip": request.client.host,
                 "request_id": request.state.request_id,
                 "payload": item_id
