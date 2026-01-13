@@ -9,6 +9,7 @@ A containerized security monitoring environment demonstrating log collection, co
 ## 📋 Project Overview
 
 This project implements a **SOC prototype** capable of:
+
 - **Collecting** security events from application, network, and system layers
 - **Correlating** events using a SIEM platform (Wazuh)
 - **Analyzing** and visualizing security incidents
@@ -17,7 +18,7 @@ This project implements a **SOC prototype** capable of:
 ### Business Context
 
 | Attribute | Value |
-|-----------|-------|
+| --------- | ----- |
 | **Company** | SafePay (FinTech Startup) |
 | **Employees** | ~90 |
 | **Location** | Lisbon HQ, remote EU engineers |
@@ -27,7 +28,7 @@ This project implements a **SOC prototype** capable of:
 
 ## 🏗️ Architecture
 
-```
+```txt
 ┌─────────────────────────────────────────────────────────────────┐
 │                        EXTERNAL ACCESS                          │
 │                              :80                                │
@@ -64,7 +65,7 @@ This project implements a **SOC prototype** capable of:
 ## 🛠️ Technology Stack
 
 | Layer | Technology | Purpose |
-|-------|------------|---------|
+| ----- | ---------- | ------- |
 | **Containerization** | Docker + Compose | Service orchestration |
 | **Backend** | FastAPI (Python 3.13) | REST API with security logging |
 | **Reverse Proxy** | Nginx | TLS termination, access logging |
@@ -113,28 +114,11 @@ docker logs api-service
 docker logs ids-suricata
 ```
 
-### 3. Test the API
-
-```bash
-# Successful login
-curl -X POST http://localhost/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"user","password":"pass"}'
-
-# Failed login (generates security log)
-curl -X POST http://localhost/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"wrong"}'
-
-# SQLi attempt (detected and logged)
-curl "http://localhost/items/1%20OR%201=1"
-```
-
 ---
 
 ## 📁 Project Structure
 
-```
+```txt
 soc-project/
 ├── docker-compose.yml       # Service definitions
 ├── .env                     # Environment variables
@@ -166,11 +150,11 @@ soc-project/
 ## 📊 Log Sources
 
 | Source | Log Type | Location |
-|--------|----------|----------|
+| ------ | -------- | -------- |
 | FastAPI | Security events (JSON) | `logs/api/security.json` |
 | Nginx | Access logs (JSON) | `logs/nginx/access.log` |
 | Nginx | Error logs | `logs/nginx/error.log` |
-| Suricata | EVE alerts (JSON) | `logs/suricata/eve.json` |
+| Suricata | EVE alerts (JSON) | `logs/suricata/eve.jsonl` |
 | Suricata | Stats | `logs/suricata/stats.log` |
 
 ---
@@ -180,7 +164,7 @@ soc-project/
 These **intentional vulnerabilities** are documented for demonstration:
 
 | Vulnerability | Endpoint | Detection |
-|--------------|----------|-----------|
+| ------------- | -------- | --------- |
 | SQL Injection Pattern | `GET /items/{id}` | App logs + Suricata |
 | Broken Auth | `POST /login` | Auth logs |
 | Port Scanning | N/A | Suricata IDS |
@@ -191,12 +175,14 @@ These **intentional vulnerabilities** are documented for demonstration:
 ## 🔍 Detection Rules
 
 ### Suricata Rules (`suricata/rules/local.rules`)
-```
+
+```txt
 alert icmp any any -> any any (msg:"ICMP connection detected"; sid:1000001;)
 alert tcp any any -> any 8000 (msg:"Attack on API detected"; sid:1000002;)
 ```
 
 ### Wazuh Rules (TODO)
+
 - Brute force: >5 failures in 60 seconds
 - SQLi: Pattern matching in URL parameters
 - Privilege abuse: Role mismatch detection
@@ -206,7 +192,7 @@ alert tcp any any -> any 8000 (msg:"Attack on API detected"; sid:1000002;)
 ## 📈 Project Progress
 
 | Phase | Status | Description |
-|-------|--------|-------------|
+| ----- | ------ | ----------- |
 | **Phase 1** | ✅ Complete | Core infrastructure (Docker, API, Nginx) |
 | **Phase 2** | 🔄 In Progress | SIEM integration & custom rules |
 | **Phase 3** | ⏳ Pending | Vulnerability demonstrations |
@@ -216,6 +202,38 @@ alert tcp any any -> any 8000 (msg:"Attack on API detected"; sid:1000002;)
 ---
 
 ## 🧪 Testing
+
+### Makefile Test Targets
+
+The repository includes a `Makefile` with convenient test targets to exercise the API and network detection components.
+Configurable variables (can be set in an `env` file or passed on the `make` command line):
+
+- `TARGET_IP` — target for Nmap scans (default: `192.0.2.10`)
+- `NETWORK` — network range for host discovery (default: `192.0.2.0/24`)
+- `API_URL` — base URL for API tests (default: `http://192.0.2.10`)
+
+Examples:
+
+```bash
+# Help Command shows all commands available
+make help
+
+# Run only API tests against a locally-running API
+make api-tests API_URL=http://localhost
+
+# Run network scans against a specific host/network
+make network-tests TARGET_IP=192.0.2.5 NETWORK=192.0.2.0/24
+```
+
+### View Suricata Alerts
+
+```bash
+# Check if Suricata is capturing traffic
+docker logs ids-suricata
+
+# View alerts
+tail -f logs/suricata/eve.jsonl | jq '.alert'
+```
 
 ### Manual API Testing
 
@@ -233,16 +251,6 @@ curl "http://localhost/items/1' UNION SELECT * FROM users--"
 
 # View generated logs
 tail -f logs/api/security.json
-```
-
-### View Suricata Alerts
-
-```bash
-# Check if Suricata is capturing traffic
-docker logs ids-suricata
-
-# View alerts
-tail -f logs/suricata/eve.json | jq '.alert'
 ```
 
 ---
@@ -289,5 +297,3 @@ docker-compose config
 ## 📝 License
 
 This project is for educational purposes as part of a Security Operations Center coursework.
-
----

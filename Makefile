@@ -13,18 +13,20 @@
 # --------------------
 # Configuration
 # --------------------
+
 SUDO       ?= sudo
-API_URL    ?= http://localhost
-ES_URL     ?= http://localhost:9200
-KIBANA_URL ?= http://localhost:5601
 TARGET_IP  ?= 127.0.0.1
 NETWORK    ?= 172.17.0.0/16
 
+API_URL    ?= http://localhost
+ES_URL     ?= http://localhost:9200
+KIBANA_URL ?= http://localhost:5601
+
 # Credentials (override via .env or command line)
-API_USER   ?= admin
-API_PASS   ?= wrong
-VALID_USER ?= user
-VALID_PASS ?= pass
+ADMIN_USER       ?= admin
+ADMIN_WRONG_PASS ?= wrong
+VALID_USER       ?= user
+VALID_PASS       ?= pass
 
 -include .env
 
@@ -253,7 +255,7 @@ login-failure:
 	printf "[API] Testing Failed Login... "
 	STATUS=$$(curl -s -o /dev/null -w "%{http_code}" -X POST $(API_URL)/login \
 		-H "Content-Type: application/json" \
-		-d '{"username":"$(API_USER)","password":"$(API_PASS)"}' 2>/dev/null || echo 000); \
+		-d '{"username":"$(ADMIN_USER)","password":"$(ADMIN_WRONG_PASS)"}' 2>/dev/null || echo 000); \
 	if [ "$$STATUS" -eq 401 ]; then \
 		echo "$(GREEN)OK (401 - Expected)$(NC)"; \
 	else \
@@ -271,7 +273,7 @@ brute-force:
 	for i in 1 2 3 4 5; do \
 		curl -s -X POST $(API_URL)/login \
 			-H "Content-Type: application/json" \
-			-d '{"username":"$(API_USER)","password":"attempt'$$i'"}' > /dev/null 2>&1; \
+			-d '{"username":"$(ADMIN_USER)","password":"attempt'$$i'"}' > /dev/null 2>&1; \
 		echo "  Attempt $$i sent"; \
 	done
 	echo "$(GREEN)[BRUTE FORCE COMPLETE]$(NC)"
@@ -310,7 +312,7 @@ pipeline-test: siem-ready
 	echo "1. Baseline: $$PRE_COUNT docs"; \
 	echo "2. Generating attack traffic..."; \
 	curl -s -X POST $(API_URL)/login -H "Content-Type: application/json" \
-		-d '{"username":"$(API_USER)","password":"$(API_PASS)"}' > /dev/null 2>&1; \
+		-d '{"username":"$(ADMIN_USER)","password":"$(ADMIN_WRONG_PASS)"}' > /dev/null 2>&1; \
 	curl -s "$(API_URL)/items/1%20OR%201=1" > /dev/null 2>&1; \
 	echo "   (Waiting 5s for propagation...)"; \
 	sleep 5; \
