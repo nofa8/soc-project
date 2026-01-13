@@ -15,7 +15,7 @@ class SecurityJsonFormatter(jsonlogger.JsonFormatter):
         )
         log_record.setdefault("level", record.levelname)
         log_record.setdefault("component", "unknown")
-        log_record.setdefault("event", "generic_event")
+        log_record.setdefault("soc_event", "generic_event")
         log_record.setdefault("src_ip", "unknown")
         log_record.setdefault("username", "anonymous")
         log_record.setdefault("request_id", "undefined")

@@ -2,13 +2,13 @@
 
   <rule id="100001" level="3">
     <decoded_as>json</decoded_as>
-    <field name="event">login_success</field>
+    <field name="soc_event">login_success</field>
     <description>Successful API Login</description>
   </rule>
 
   <rule id="100002" level="5">
     <decoded_as>json</decoded_as>
-    <field name="event">login_failed</field>
+    <field name="soc_event">login_failed</field>
     <description>Failed API Login</description>
   </rule>
 
@@ -18,7 +18,7 @@
   </rule>
 
   <rule id="100004" level="12">
-    <field name="event">possible_sqli</field>
+    <field name="soc_event">possible_sqli</field>
     <description>SQL Injection Attempt</description>
   </rule>
 
