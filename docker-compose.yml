@@ -76,7 +76,7 @@ services:
     image: jasonish/suricata:latest
     container_name: ids-suricata
     user: root
-    network_mode: ${SURICATA_NETWORK_MODE:-host} # fallback to host if not set
+    network_mode: ${SURICATA_NETWORK_MODE:-host}
     cap_add:
       - NET_ADMIN
       - SYS_NICE
@@ -98,6 +98,7 @@ services:
       - wazuh-logs:/var/ossec/logs/alerts
       - ./config/wazuh_cluster/wazuh_manager.conf:/wazuh-config-mount/etc/ossec.conf
       - ./wazuh/custom-rules.xml:/var/ossec/etc/rules/custom_rules.xml:z
+      - ./wazuh/local_internal_options.conf:/var/ossec/etc/local_internal_options.conf:z
 
   wazuh-agent:
     image: wazuh/wazuh-agent:4.14.1
@@ -133,6 +134,8 @@ services:
     image: docker.elastic.co/beats/filebeat:8.11.1
     container_name: filebeat
     user: root
+    #environment:
+    #  - ELASTICSEARCH_HOST=http://wazuh.indexer:9200
     command: [ "filebeat", "-e", "-strict.perms=false" ]
     depends_on:
       elasticsearch:
