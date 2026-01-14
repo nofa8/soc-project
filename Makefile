@@ -47,7 +47,7 @@ NC     := $(shell tput sgr0 2>/dev/null || echo "")
         test api-tests attack-tests \
         login-success login-failure sqli-test brute-force \
         network-tests nmap-host nmap-ports nmap-services \
-        pipeline-test count-events verify-detection \
+        pipeline-test count-events verify-wazuh-rules \
         restart clean-logs reset-lab
 
 # ============================================================================
@@ -85,6 +85,10 @@ status: preflight containers
 containers:
 	echo "$(YELLOW)=== CONTAINER STATUS ===$(NC)"
 	docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -v WinBoat
+
+containers-ips:
+	echo "$(YELLOW)=== CONTAINER IP ADDRESSES ===$(NC)"
+	@docker ps --format '{{.Names}} {{.ID}}' | while read name id; do ips=$$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' "$$id"); echo "$$name $$ips"; done
 
 logs:
 	echo "$(YELLOW)=== RECENT LOGS ===$(NC)"
@@ -195,54 +199,15 @@ verify-suricata:
 		exit 1; \
 	fi
 
-# ============================================================================
-# DETECTION VERIFICATION (Semantic Correctness)
-# ============================================================================
-
-verify-detection:
-	echo "$(YELLOW)=== DETECTION VERIFICATION (Rule Logic) ===$(NC)"
-	# Rule 100002: Login Failed
-	printf "  %-35s " "Rule 100002 (Login Failed):"
-	COUNT=$$(curl -s '$(ES_URL)/soc-logs-*/_search?q=rule.id:100002' 2>/dev/null | \
-		jq '.hits.total.value' 2>/dev/null || echo 0); \
-	if [ "$$COUNT" -gt 0 ]; then \
-		echo "$(GREEN)Verified ($$COUNT alerts)$(NC)"; \
-	else \
-		echo "$(RED)Not Triggered$(NC)"; \
-	fi
-	# Rule 100003: Brute Force
-	printf "  %-35s " "Rule 100003 (Brute Force):"
-	COUNT=$$(curl -s '$(ES_URL)/soc-logs-*/_search?q=rule.id:100003' 2>/dev/null | \
-		jq '.hits.total.value' 2>/dev/null || echo 0); \
-	if [ "$$COUNT" -gt 0 ]; then \
-		echo "$(GREEN)Verified ($$COUNT alerts)$(NC)"; \
-	else \
-		echo "$(RED)Not Triggered$(NC)"; \
-	fi
-	# Rule 100004: SQLi
-	printf "  %-35s " "Rule 100004 (SQL Injection):"
-	COUNT=$$(curl -s '$(ES_URL)/soc-logs-*/_search?q=rule.id:100004' 2>/dev/null | \
-		jq '.hits.total.value' 2>/dev/null || echo 0); \
-	if [ "$$COUNT" -gt 0 ]; then \
-		echo "$(GREEN)Verified ($$COUNT alerts)$(NC)"; \
-	else \
-		echo "$(RED)Not Triggered$(NC)"; \
-	fi
-	# Rule 100006: Suricata
-	printf "  %-35s " "Rule 100006 (IDS Alert):"
-	COUNT=$$(curl -s '$(ES_URL)/soc-logs-*/_search?q=rule.id:100006' 2>/dev/null | \
-		jq '.hits.total.value' 2>/dev/null || echo 0); \
-	if [ "$$COUNT" -gt 0 ]; then \
-		echo "$(GREEN)Verified ($$COUNT alerts)$(NC)"; \
-	else \
-		echo "$(YELLOW)Not Triggered (Run network-tests)$(NC)"; \
-	fi
+verify-wazuh-rules:
+	echo "$(YELLOW)=== WAZUH RULES VERIFICATION ===$(NC)"
+	@bash tests/verify-wazuh-rules.sh
 
 # ============================================================================
 # TESTING TARGETS
 # ============================================================================
 
-test: api-tests
+test: api-tests network-tests pipeline-test
 	echo "$(GREEN)=== TESTS COMPLETE ===$(NC)"
 
 api-tests: login-success login-failure sqli-test
@@ -276,6 +241,16 @@ sqli-test:
 	printf "[API] Testing SQL Injection detection... "
 	curl -s "$(API_URL)/items/1%20OR%201=1" > /dev/null 2>&1
 	echo "$(GREEN)SENT$(NC)"
+
+server-error-test:
+	printf "[API] Testing Server Error... "
+	STATUS=$$(curl -s -o /dev/null -w "%{http_code}" $(API_URL)/error 2>/dev/null || echo 000); \
+	if [ "$$STATUS" -eq 500 ]; then \
+		echo "$(GREEN)OK (500 - Expected)$(NC)"; \
+	else \
+		echo "$(RED)FAILED ($$STATUS)$(NC)"; \
+		exit 1; \
+	fi
 
 brute-force:
 	echo "$(YELLOW)[API] Simulating Brute Force (5 attempts)...$(NC)"

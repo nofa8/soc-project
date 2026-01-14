@@ -96,3 +96,16 @@ async def read_item(item_id: str, request: Request):
         )
 
     return {"item_id": item_id}
+
+@app.get("/error")
+async def simulate_error(request: Request):
+    logger.error(
+        "Internal server error",
+        extra={
+            "component": "api-engine",
+            "soc_event": "internal_error",
+            "src_ip": request.client.host,
+            "request_id": request.state.request_id
+        }
+    )
+    raise HTTPException(status_code=500, detail="Internal server error")

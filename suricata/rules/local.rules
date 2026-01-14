@@ -1,2 +1,4 @@
-alert icmp any any -> any any (msg:"ICMP connection detected"; sid:1000001; rev:1;)
-alert tcp any any -> any 8000 (msg:"Attack on API detected"; sid:1000002; rev:1;)
+alert icmp any any -> any any (msg:"ICMP Echo (ping) detected"; itype:8; sid:1000001; rev:1;)
+alert http any any -> any 8000 (msg:"Possible API abuse via HTTP to port 8000"; flow:established,to_server; sid:1000002; rev:1;)
+alert http any any -> any 8000 (msg:"SQL injection attempt to API"; flow:established,to_server; http.request_body; pcre:"/union[\s]+select/i"; sid:1000003; rev:1;)
+alert http any any -> any 8000 (msg:"Suspicious User-Agent to API"; flow:established,to_server; http.user_agent; content:"curl"; sid:1000004; rev:1;)
