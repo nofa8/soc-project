@@ -84,6 +84,7 @@ services:
     volumes:
       - ./suricata:/etc/suricata:z
       - ./logs/suricata:/var/log/suricata:z
+      - ./pcap:/pcap:ro
     command: ${SURICATA_COMMAND}
 
   wazuh-manager:
