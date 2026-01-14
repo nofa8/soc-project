@@ -262,6 +262,9 @@ brute-force:
 	done
 	echo "$(GREEN)[BRUTE FORCE COMPLETE]$(NC)"
 
+test-user-agent:
+	curl -s http://testmynids.org/uid/index.html > /dev/null
+
 # ============================================================================
 # NETWORK TESTS
 # ============================================================================
@@ -275,7 +278,7 @@ nmap-host:
 
 nmap-ports:
 	echo "[NMAP] TCP port scan on $(TARGET_IP)"
-	$(SUDO) nmap -sS $(TARGET_IP)
+	$(SUDO) nmap -sS -p0-65535 $(TARGET_IP)
 	echo ""
 
 nmap-services:
