@@ -200,33 +200,42 @@ verify-suricata:
 # ============================================================================
 
 verify-detection:
-	echo "$(YELLOW)=== DETECTION VERIFICATION ===$(NC)"
-	# Check for login_failed events
-	printf "  %-30s " "Login Failed Events:"
-	COUNT=$$(curl -s '$(ES_URL)/soc-logs-*/_search?q=soc_event:login_failed' 2>/dev/null | \
+	echo "$(YELLOW)=== DETECTION VERIFICATION (Rule Logic) ===$(NC)"
+	# Rule 100002: Login Failed
+	printf "  %-35s " "Rule 100002 (Login Failed):"
+	COUNT=$$(curl -s '$(ES_URL)/soc-logs-*/_search?q=rule.id:100002' 2>/dev/null | \
 		jq '.hits.total.value' 2>/dev/null || echo 0); \
 	if [ "$$COUNT" -gt 0 ]; then \
-		echo "$(GREEN)$$COUNT found$(NC)"; \
+		echo "$(GREEN)Verified ($$COUNT alerts)$(NC)"; \
 	else \
-		echo "$(RED)None found$(NC)"; \
+		echo "$(RED)Not Triggered$(NC)"; \
 	fi
-	# Check for possible_sqli events
-	printf "  %-30s " "SQLi Attempts:"
-	COUNT=$$(curl -s '$(ES_URL)/soc-logs-*/_search?q=soc_event:possible_sqli' 2>/dev/null | \
+	# Rule 100003: Brute Force
+	printf "  %-35s " "Rule 100003 (Brute Force):"
+	COUNT=$$(curl -s '$(ES_URL)/soc-logs-*/_search?q=rule.id:100003' 2>/dev/null | \
 		jq '.hits.total.value' 2>/dev/null || echo 0); \
 	if [ "$$COUNT" -gt 0 ]; then \
-		echo "$(GREEN)$$COUNT found$(NC)"; \
+		echo "$(GREEN)Verified ($$COUNT alerts)$(NC)"; \
 	else \
-		echo "$(RED)None found$(NC)"; \
+		echo "$(RED)Not Triggered$(NC)"; \
 	fi
-	# Check for Suricata alerts
-	printf "  %-30s " "Suricata Alerts:"
-	COUNT=$$(curl -s '$(ES_URL)/soc-logs-*/_search?q=event_type:alert' 2>/dev/null | \
+	# Rule 100004: SQLi
+	printf "  %-35s " "Rule 100004 (SQL Injection):"
+	COUNT=$$(curl -s '$(ES_URL)/soc-logs-*/_search?q=rule.id:100004' 2>/dev/null | \
 		jq '.hits.total.value' 2>/dev/null || echo 0); \
 	if [ "$$COUNT" -gt 0 ]; then \
-		echo "$(GREEN)$$COUNT found$(NC)"; \
+		echo "$(GREEN)Verified ($$COUNT alerts)$(NC)"; \
 	else \
-		echo "$(YELLOW)None yet$(NC)"; \
+		echo "$(RED)Not Triggered$(NC)"; \
+	fi
+	# Rule 100006: Suricata
+	printf "  %-35s " "Rule 100006 (IDS Alert):"
+	COUNT=$$(curl -s '$(ES_URL)/soc-logs-*/_search?q=rule.id:100006' 2>/dev/null | \
+		jq '.hits.total.value' 2>/dev/null || echo 0); \
+	if [ "$$COUNT" -gt 0 ]; then \
+		echo "$(GREEN)Verified ($$COUNT alerts)$(NC)"; \
+	else \
+		echo "$(YELLOW)Not Triggered (Run network-tests)$(NC)"; \
 	fi
 
 # ============================================================================

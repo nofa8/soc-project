@@ -108,7 +108,7 @@ services:
     environment:
       - WAZUH_MANAGER=wazuh-manager
     volumes:
-      - ./config/agent/ossec.conf:/wazuh-config-mount/etc/ossec.conf
+      - ./config/agent/ossec.conf:/var/ossec/etc/ossec.conf:z
       - ./logs:/var/log/soc_logs:ro
     depends_on:
       - wazuh-manager
