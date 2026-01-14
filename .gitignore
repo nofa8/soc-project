@@ -2,6 +2,8 @@
 logs/
 # Ignore Docker internal data
 wazuh-data/
+# Ignore pcap data
+**/*.pcap
 # Ignore local environment secrets
 .env
 
