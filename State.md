@@ -1,55 +1,47 @@
 # SOC Project – State Report
 
-> **Last Updated:** 2026-01-13 21:15 UTC  
-> **Status:** ✅ **PROFESSIONAL GRADE & VERIFIED**
+> **Last Updated:** 2026-01-15 14:30 UTC  
+> **Status:** ✅ **PHASE 2 FROZEN: VERIFIED & BASELINED**
 
 ---
 
 ## Executive Summary
 
+Phase 2 controls were validated using positive, negative, and resilience tests and are considered operationally stable.
+
 | Metric | Value |
 |--------|-------|
-| **Containers** | 10/10 Running |
-| **Pipeline** | ✅ **Verified** (Agent → Manager → ES) |
-| **Ruleset** | ✅ **Enhanced V2 (MITRE Mapped)** |
-| **Alerts** | **150+** Verified in Elasticsearch |
+| **Containers** | 11/11 Running |
+| **Pipeline** | ✅ End-to-End Verified |
+| **Alerting** | ✅ Active (Level 10+ Email) |
+| **Integrity** | ✅ Chain-of-Custody Proven |
 
 ---
 
-## Enhanced Ruleset Verification (V2)
+## Surgical Validation Tests (Phase 2 Closure)
 
-The ruleset has been upgraded to include MITRE ATT&CK mapping and stricter correlation logic (`same_source_ip`).
-
-| Rule ID | Description | MITRE | Status | Behavior (New Logic) |
-|---------|-------------|-------|--------|----------------------|
-| **100001** | Login Success | - | ✅ | Standard detection |
-| **100002** | Login Failed | **T1110** | ✅ | Mapped to "Brute Force" |
-| **100003** | Brute Force | **T1110** | ✅ | Enforces `same_source_ip` (Robust) |
-| **100004** | SQL Injection | **T1190** | ✅ | Mapped to "Exploit Public-Facing App" |
-| **100005** | API Error 500 | - | ✅ | Corrected component name |
-| **100006** | IDS Alert | **T1046** | ✅ | Uses `<if_matched_group>suricata` (High Confidence) |
+| Test | Objective | Result | Verdict |
+|------|-----------|--------|---------|
+| **Negative Control** | Prove no noise | 4 failures = 0 emails | ✅ **PASSED** |
+| **Flood Control** | Prove anti-fatigue | 20 attacks = 4 emails | ✅ **PASSED** (5:1 Ratio) |
+| **Forensic Integrity** | Prove parity | Email & ES match exactly | ✅ **PASSED** (Rule 100004) |
 
 ---
 
-## Pipeline Data Flow
+## Active Ruleset (Frozen)
 
-```
-[API] --(json)--> [Filebeat] --(raw logs)--> [Elasticsearch]
-                      ^
-                      |
-[Suricata] --(eve.jsonl)--+--> [Wazuh Agent 002] --> [Wazuh Manager] --(alerts.json)--> [Filebeat] --(alerts)--> [Elasticsearch]
-```
-
-- **Wazuh Agent:** ID 002 (Active)
-- **Config persistence:** Secured via direct volume mounts.
+| Rule ID | Name | Level | Alert Action |
+|---------|------|-------|--------------|
+| **100002** | Login Success | 3 | Log Only |
+| **100003** | Login Failed | 5 | Log Only |
+| **100004** | Brute Force | **10** | 📧 **EMAIL** |
+| **100005** | SQL Injection | **12** | 📧 **EMAIL** |
+| **100006** | API Error | 7 | Log Only |
+| **1001xx** | Suricata IDS | Varies | 📧 **EMAIL** (If Level ≥ 10) |
 
 ---
 
-## Next Steps
+## Next Steps: Phase 3 (Vulnerabilities)
 
-1. **Kibana Visualization:**
-   - Create dashboards filtering by `mitre.id` (New capability!).
-   - Visualize Attack Vectors (SQLi vs Brute Force).
-
-2. **Phase 3:** Vulnerability Implementation
-   - Proceed with broken authentication checks.
+1. **Broken Authentication:** Implement admin logic flaw.
+2. **Data Layer Abuse:** Implement real SQL injection.

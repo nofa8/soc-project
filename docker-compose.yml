@@ -44,6 +44,19 @@ services:
     volumes:
       - ./logs/ldap:/var/log/ldap:z
 
+  mail-server:
+    image: mailhog/mailhog:latest
+    container_name: mailhog
+    hostname: mail-server
+    user: root
+    environment:
+      - MH_SMTP_BIND_ADDR=0.0.0.0:25
+    ports:
+      - "8025:8025"
+      - "1025:25"
+    networks:
+      - default
+
   # =============================
   # SECURITY & MONITORING
   # =============================
@@ -85,7 +98,7 @@ services:
       - ./suricata:/etc/suricata:z
       - ./logs/suricata:/var/log/suricata:z
       - ./pcap:/pcap:ro
-    entrypoint: ["/etc/suricata/entrypoint.sh"]
+    entrypoint: [ "/etc/suricata/entrypoint.sh" ]
     command: ${SURICATA_COMMAND}
 
   wazuh-manager:
@@ -98,7 +111,7 @@ services:
     volumes:
       - wazuh-data:/var/ossec/data
       - wazuh-logs:/var/ossec/logs/alerts
-      - ./config/wazuh_cluster/wazuh_manager.conf:/wazuh-config-mount/etc/ossec.conf
+      - ./config/wazuh_cluster/wazuh_manager.conf:/var/ossec/etc/ossec.conf:z
       - ./wazuh/custom-rules.xml:/var/ossec/etc/rules/custom_rules.xml:z
       - ./wazuh/local_internal_options.conf:/var/ossec/etc/local_internal_options.conf:z
       - ./config/wazuh_manager/filebeat-service:/etc/services.d/filebeat:ro
