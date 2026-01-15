@@ -21,6 +21,7 @@ services:
       - ./logs/nginx:/var/log/nginx:z
     depends_on:
       - api-service
+      - kibana
 
   db-service:
     image: postgres:15-alpine
@@ -31,8 +32,8 @@ services:
       POSTGRES_PASSWORD: safepay
     volumes:
       - ./logs/db:/var/log/postgresql:z
-    ports:
-      - "5432:5432"
+    expose:
+      - "5432"
 
   auth-ldap:
     image: osixia/openldap:latest
@@ -60,14 +61,18 @@ services:
         hard: -1
     volumes:
       - elasticsearch-data:/usr/share/elasticsearch/data
-    ports:
-      - "9200:9200"
+    expose:
+      - "9200"
     networks:
       default:
         aliases:
           - wazuh.indexer
     healthcheck:
-      test: [ "CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q 'green\\|yellow'" ]
+      test:
+        [
+          "CMD-SHELL",
+          "curl -s http://localhost:9200/_cluster/health | grep -q 'green\\|yellow'",
+        ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -91,10 +96,10 @@ services:
   wazuh-manager:
     image: wazuh/wazuh-manager:4.14.1
     container_name: wazuh-manager
-    ports:
-      - "1514:1514/tcp"
-      - "1515:1515/tcp"
-      - "55000:55000"
+    expose:
+      - "1514/tcp"
+      - "1515/tcp"
+      - "55000"
     volumes:
       - wazuh-data:/var/ossec/data
       - wazuh-logs:/var/ossec/logs/alerts
@@ -127,8 +132,10 @@ services:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
       - XPACK_SECURITY_ENABLED=false
       - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=UfR2qXwQJQ8UgAfs/Ayz5IJ3rsCwmhBrAbJ0AKH8h88=
-    ports:
-      - "5601:5601"
+      - SERVER_BASEPATH=/kibana
+      - SERVER_REWRITEBASEPATH=true
+    expose:
+      - "5601"
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -139,7 +146,7 @@ services:
     user: root
     #environment:
     #  - ELASTICSEARCH_HOST=http://wazuh.indexer:9200
-    command: [ "filebeat", "-e", "-strict.perms=false" ]
+    command: ["filebeat", "-e", "-strict.perms=false"]
     depends_on:
       elasticsearch:
         condition: service_healthy
