@@ -164,4 +164,45 @@
     </mitre>
     <group>suricata,ids,correlation,</group>
   </rule>
+
+  <!-- Phase 3.3: VPN Detection Rules -->
+
+  <rule id="100020" level="7">
+    <match>Invalid handshake|peer not found|unauthorized</match>
+    <description>VPN Authentication Failure</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>vpn,authentication_failed,</group>
+  </rule>
+
+  <rule id="100021" level="10" frequency="5" timeframe="60">
+    <if_matched_sid>100020</if_matched_sid>
+    <description>VPN Brute Force Attempt Detected</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>vpn,bruteforce,</group>
+  </rule>
+
+  <!-- Phase 3.4: Firewall Detection Rules -->
+
+  <rule id="100030" level="7">
+    <match>FW_BLOCK_</match>
+    <description>Firewall Blocked Connection</description>
+    <mitre>
+      <id>T1046</id>
+    </mitre>
+    <group>firewall,blocked,</group>
+  </rule>
+
+  <rule id="100031" level="10" frequency="10" timeframe="60">
+    <if_matched_sid>100030</if_matched_sid>
+    <description>Network Scan Detected (Firewall)</description>
+    <mitre>
+      <id>T1046</id>
+    </mitre>
+    <group>firewall,reconnaissance,</group>
+  </rule>
+
 </group>

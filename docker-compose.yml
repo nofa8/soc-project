@@ -57,6 +57,38 @@ services:
     networks:
       - default
 
+  # Phase 3.3: VPN Service (WireGuard)
+  vpn-wireguard:
+    image: linuxserver/wireguard:latest
+    container_name: vpn-wireguard
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - SERVERPORT=51820
+      - PEERS=1
+      - LOG_CONFS=true
+    volumes:
+      - ./vpn/config:/config
+    ports:
+      - "51820:51820/udp"
+    networks:
+      - default
+
+  # Phase 3.4: Firewall Layer (iptables)
+  # Justification: Host network mode is required to observe real ingress traffic for perimeter logging.
+  firewall:
+    image: debian:bookworm-slim
+    container_name: firewall-iptables
+    cap_add:
+      - NET_ADMIN
+    network_mode: host
+    command: [ "sh", "-c", "apt-get update && apt-get install -y iptables && iptables-restore < /etc/iptables/rules.v4 && tail -f /dev/null" ]
+    volumes:
+      - ./firewall/rules.v4:/etc/iptables/rules.v4:ro,z
+
   # =============================
   # SECURITY & MONITORING
   # =============================

@@ -1,47 +1,37 @@
 # SOC Project – State Report
 
-> **Last Updated:** 2026-01-15 17:45 UTC  
-> **Status:** ✅ **PHASE 3 COMPLETE: VULNERABILITIES DETECTED**
+> **Last Updated:** 2026-01-15 18:20 UTC  
+> **Status:** ✅ **SOC OPERATIONAL – TESTS IMPLEMENTED**
 
 ---
 
 ## Executive Summary
 
-Phase 3 is complete. We have successfully implemented and detected both targeted vulnerabilities. The SOC demonstrated **Defense in Depth** by detecting SQL Injection at the Network Layer (Suricata) while preserving comprehensive Application Layer forensics (FastAPI Logs).
+SOC is fully operational with validated detection and operational assurance tests.
 
-| Metric | Value |
-|--------|-------|
-| **Vunerability #1** | ✅ **Broken Auth** (Level 10 Alert) |
-| **Vunerability #2** | ✅ **SQL Injection** (Level 14 Alert + Forensic Log) |
-| **Detection** | **Defense in Depth** (Network + App) |
-| **Integrity** | ✅ Attack Payloads Captured |
-
----
-
-## Evidence Locker (Phase 3.2: SQL Injection)
-
-| Artifact | Verified Content |
-|----------|------------------|
-| **Exploit** | `1' OR '1'='1` |
-| **Wazuh (App)** | Logged: `raw_parameter: "1' OR '1'='1"` |
-| **Wazuh (Net)** | Alert: **Rule 100130 (Level 14)** – Multiple Suricata alerts |
-| **Notification** | Email: `Wazuh notification - ... Alert level 14` |
-
-*Note: Network-layer detection (Suricata) correctly identified the attack vector (ET WEB_SERVER) and triggered a Critical (Level 14) alert, pre-empting the Application-layer rule.*
+| Component | Status |
+|-----------|--------|
+| **Infrastructure** | ✅ 13 Containers |
+| **Detection Rules** | ✅ 100002-100031 |
+| **Validation Tests** | ✅ `make test-killchain` |
 
 ---
 
-## Active Ruleset (Frozen)
+## SOC Validation Test Suite
 
-| Rule ID | Name | Level | Status |
-|---------|------|-------|--------|
-| **100010** | **Privilege Escalation** | 10 | ✅ **VERIFIED** |
-| **100005** | **SQL Injection** | 12 | ✅ **LOGGED** |
-| **100130** | **Suricata Correlation** | 14 | ✅ **ALERTED** |
+| Test | Command | Purpose |
+|------|---------|---------|
+| Pipeline Health | `make test-pipeline` | Verify SIEM alive |
+| Negative Control | `make test-noise` | Prove no alert on noise |
+| SQLi Detection | `make test-sqli` | Validate Rule 100005 |
+| Priv Esc Detection | `make test-privilege` | Validate Rule 100010 |
+| VPN Detection | `make test-vpn` | Validate Rule 100020 |
+| Firewall Detection | `make test-firewall` | Validate Rule 100030 |
+| **Kill Chain** | `make test-killchain` | Full SOC Demo |
 
 ---
 
-## Next Steps: Phase 4 (Attack Narrative)
+## Next Steps: Phase 4 (Dashboards)
 
-1.  **Objective:** Execute full kill chain ("The Story").
-2.  **Dashboards:** Build visualizations to show the attack timeline.
+1.  **Objective:** Build Kibana visualizations.
+2.  **Timeline View:** Attack sequence correlation.

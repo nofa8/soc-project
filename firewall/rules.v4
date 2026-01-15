@@ -1,0 +1,14 @@
+*filter
+:INPUT ACCEPT [0:0]
+:FORWARD ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+
+# Block SSH with logging and observable rejection
+-A INPUT -p tcp --dport 22 -j LOG --log-prefix "FW_BLOCK_SSH " --log-level 4
+-A INPUT -p tcp --dport 22 -j REJECT --reject-with tcp-reset
+
+# Block DB with logging and observable rejection
+-A INPUT -p tcp --dport 3306 -j LOG --log-prefix "FW_BLOCK_DB " --log-level 4
+-A INPUT -p tcp --dport 3306 -j REJECT --reject-with tcp-reset
+
+COMMIT
