@@ -1,47 +1,47 @@
 # SOC Project – State Report
 
-> **Last Updated:** 2026-01-15 14:30 UTC  
-> **Status:** ✅ **PHASE 2 FROZEN: VERIFIED & BASELINED**
+> **Last Updated:** 2026-01-15 17:45 UTC  
+> **Status:** ✅ **PHASE 3 COMPLETE: VULNERABILITIES DETECTED**
 
 ---
 
 ## Executive Summary
 
-Phase 2 controls were validated using positive, negative, and resilience tests and are considered operationally stable.
+Phase 3 is complete. We have successfully implemented and detected both targeted vulnerabilities. The SOC demonstrated **Defense in Depth** by detecting SQL Injection at the Network Layer (Suricata) while preserving comprehensive Application Layer forensics (FastAPI Logs).
 
 | Metric | Value |
 |--------|-------|
-| **Containers** | 11/11 Running |
-| **Pipeline** | ✅ End-to-End Verified |
-| **Alerting** | ✅ Active (Level 10+ Email) |
-| **Integrity** | ✅ Chain-of-Custody Proven |
+| **Vunerability #1** | ✅ **Broken Auth** (Level 10 Alert) |
+| **Vunerability #2** | ✅ **SQL Injection** (Level 14 Alert + Forensic Log) |
+| **Detection** | **Defense in Depth** (Network + App) |
+| **Integrity** | ✅ Attack Payloads Captured |
 
 ---
 
-## Surgical Validation Tests (Phase 2 Closure)
+## Evidence Locker (Phase 3.2: SQL Injection)
 
-| Test | Objective | Result | Verdict |
-|------|-----------|--------|---------|
-| **Negative Control** | Prove no noise | 4 failures = 0 emails | ✅ **PASSED** |
-| **Flood Control** | Prove anti-fatigue | 20 attacks = 4 emails | ✅ **PASSED** (5:1 Ratio) |
-| **Forensic Integrity** | Prove parity | Email & ES match exactly | ✅ **PASSED** (Rule 100004) |
+| Artifact | Verified Content |
+|----------|------------------|
+| **Exploit** | `1' OR '1'='1` |
+| **Wazuh (App)** | Logged: `raw_parameter: "1' OR '1'='1"` |
+| **Wazuh (Net)** | Alert: **Rule 100130 (Level 14)** – Multiple Suricata alerts |
+| **Notification** | Email: `Wazuh notification - ... Alert level 14` |
+
+*Note: Network-layer detection (Suricata) correctly identified the attack vector (ET WEB_SERVER) and triggered a Critical (Level 14) alert, pre-empting the Application-layer rule.*
 
 ---
 
 ## Active Ruleset (Frozen)
 
-| Rule ID | Name | Level | Alert Action |
-|---------|------|-------|--------------|
-| **100002** | Login Success | 3 | Log Only |
-| **100003** | Login Failed | 5 | Log Only |
-| **100004** | Brute Force | **10** | 📧 **EMAIL** |
-| **100005** | SQL Injection | **12** | 📧 **EMAIL** |
-| **100006** | API Error | 7 | Log Only |
-| **1001xx** | Suricata IDS | Varies | 📧 **EMAIL** (If Level ≥ 10) |
+| Rule ID | Name | Level | Status |
+|---------|------|-------|--------|
+| **100010** | **Privilege Escalation** | 10 | ✅ **VERIFIED** |
+| **100005** | **SQL Injection** | 12 | ✅ **LOGGED** |
+| **100130** | **Suricata Correlation** | 14 | ✅ **ALERTED** |
 
 ---
 
-## Next Steps: Phase 3 (Vulnerabilities)
+## Next Steps: Phase 4 (Attack Narrative)
 
-1. **Broken Authentication:** Implement admin logic flaw.
-2. **Data Layer Abuse:** Implement real SQL injection.
+1.  **Objective:** Execute full kill chain ("The Story").
+2.  **Dashboards:** Build visualizations to show the attack timeline.

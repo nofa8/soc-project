@@ -71,31 +71,23 @@ async def login(request: Request):
 
 @app.get("/items/{item_id}")
 async def read_item(item_id: str, request: Request):
+    # Phase 3.2: Neutral Logging for SOC Detection (SQL Injection Experiment)
+    # Log the RAW parameter for the SOC to analyze
     logger.info(
-        "Resource access",
+        "API Request processed",
         extra={
             "component": "api-engine",
-            "soc_event": "access_resource",
+            "soc_event": "api_request",
+            "endpoint": "/items",
+            "raw_parameter": item_id,
             "src_ip": request.client.host,
             "request_id": request.state.request_id,
-            "resource_id": item_id
+            "method": request.method
         }
     )
-
-    # Intentional unsafe behavior (documented vulnerability)
-    if any(keyword in item_id.upper() for keyword in ["SELECT", "UNION", "OR"]):
-        logger.warning(
-            "Suspicious query pattern detected",
-            extra={
-                "component": "api-engine",
-                "soc_event": "possible_sqli",
-                "src_ip": request.client.host,
-                "request_id": request.state.request_id,
-                "payload": item_id
-            }
-        )
-
-    return {"item_id": item_id}
+    
+    # Vulnerable logic (simulated for demonstration)
+    return {"item_id": item_id, "simulated_query": f"SELECT * FROM items WHERE id = {item_id}"}
 
 @app.get("/error")
 async def simulate_error(request: Request):
@@ -109,3 +101,31 @@ async def simulate_error(request: Request):
         }
     )
     raise HTTPException(status_code=500, detail="Internal server error")
+
+# --- PHASE 3.1: BROKEN AUTHENTICATION VULNERABILITY ---
+@app.get("/admin/system_status")
+async def admin_status(request: Request):
+    # Vulnerable Logic: Check header OR role (dummy check)
+    override_header = request.headers.get("X-Admin-Override")
+    
+    # In a real app, we'd check JWT role here. 
+    # For this lab, we assume any request without the header is "unauthorized" unless mocked otherwise.
+    
+    if override_header == "true":
+        # Log the specific SOC event for detection
+        logger.warning(
+            "Privilege escalation attempt successful",
+            extra={
+                "component": "auth-engine",
+                "soc_event": "admin_override_access",
+                "auth_decision": "override_granted",
+                "username": "guest", # Simulated
+                "role": "user",      # Simulated role mismatch
+                "endpoint": "/admin/system_status",
+                "src_ip": request.client.host,
+                "request_id": request.state.request_id
+            }
+        )
+        return {"status": "system_active", "mode": "admin_privileged"}
+    
+    raise HTTPException(status_code=403, detail="Admin access required")
