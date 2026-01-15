@@ -1,4 +1,17 @@
-alert icmp any any -> any any (msg:"ICMP Echo (ping) detected"; itype:8; sid:1000001; rev:1;)
-alert http any any -> any 8000 (msg:"Possible API abuse via HTTP to port 8000"; flow:established,to_server; sid:1000002; rev:1;)
-alert http any any -> any 8000 (msg:"SQL injection attempt to API"; flow:established,to_server; http.request_body; pcre:"/union[\s]+select/i"; sid:1000003; rev:1;)
-alert http any any -> any 8000 (msg:"Suspicious User-Agent to API"; flow:established,to_server; http.user_agent; content:"curl"; sid:1000004; rev:1;)
+# Reconnaissance / Scanning Detection (100xxxx)
+
+alert icmp any any -> any any (msg:"RECON ICMP Echo Request"; itype:8; dsize:>0; sid:1000001; rev:1; classtype:attempted-recon;)
+alert tcp any any -> any any (msg:"RECON Possible SYN scan"; flags:S; detection_filter:track by_src, count 20, seconds 10; sid:1000002; rev:2; classtype:attempted-recon;)
+alert tcp any any -> any any (msg:"RECON Possible FIN scan"; flags:F; sid:1000003; rev:1; classtype:attempted-recon;)
+alert tcp any any -> any any (msg:"RECON Possible XMAS scan"; flags:UFP; sid:1000004; rev:1; classtype:attempted-recon;)
+
+
+# Suspicious HTTP / User Agent (110xxxx)
+
+alert http any any -> any any (msg:"HTTP Suspicious User-Agent curl"; flow:established,to_server; http.user_agent; content:"curl"; sid:1100001; rev:1; classtype:bad-unknown;)
+alert http any any -> any any (msg:"HTTP Suspicious User-Agent SQLMap"; flow:established,to_server; http.user_agent; content:"sqlmap"; sid:1100002; rev:1; classtype:bad-unknown;)
+
+
+# Brute Force Patterns (120xxxx)
+
+alert tcp any any -> any 22 (msg:"BRUTE SSH Attempts"; flow:to_server; flags:S; detection_filter:track by_src, count 10, seconds 120; sid:1200001; rev:2; classtype:attempted-admin;)

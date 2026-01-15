@@ -85,6 +85,7 @@ services:
       - ./suricata:/etc/suricata:z
       - ./logs/suricata:/var/log/suricata:z
       - ./pcap:/pcap:ro
+    entrypoint: ["/etc/suricata/entrypoint.sh"]
     command: ${SURICATA_COMMAND}
 
   wazuh-manager:
