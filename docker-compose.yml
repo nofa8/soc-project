@@ -35,6 +35,21 @@ services:
     expose:
       - "5432"
 
+  ldap-admin:
+    image: osixia/phpldapadmin:latest
+    container_name: ldap-admin
+    environment:
+      - PHPLDAPADMIN_HTTPS=false
+      - PHPLDAPADMIN_LDAP_HOSTS=auth-ldap
+      - PHPLDAPADMIN_ALLOW_REMOTE=true
+    ports:
+      - "6443:80"
+    depends_on:
+      - auth-ldap
+    volumes:
+      - ./ldap-admin-apache.conf:/etc/phpldapadmin/apache.conf:ro
+
+
   auth-ldap:
     image: osixia/openldap:latest
     container_name: auth-ldap
@@ -42,6 +57,9 @@ services:
       LDAP_ORGANISATION: "SafePay"
       LDAP_DOMAIN: "safepay.local"
       LDAP_ADMIN_PASSWORD: admin
+    ports:
+      - "389:389"
+      - "636:636"
     volumes:
       - ./logs/ldap:/var/log/ldap:z
 
@@ -53,8 +71,16 @@ services:
     container_name: elasticsearch
     environment:
       - discovery.type=single-node
-      - xpack.security.enabled=false
+      - xpack.security.enabled=false ##
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      # # LDAP configuration
+      # - xpack.security.authc.realms.ldap.ldap1.type=ldap
+      # - xpack.security.authc.realms.ldap.ldap1.order=0
+      # - xpack.security.authc.realms.ldap.ldap1.url=ldap://auth-ldap:389
+      # - xpack.security.authc.realms.ldap.ldap1.bind_dn=cn=admin,dc=safepay,dc=local
+      # - xpack.security.authc.realms.ldap.ldap1.bind_password=admin
+      # - xpack.security.authc.realms.ldap.ldap1.user_search.base_dn=ou=users,dc=safepay,dc=local
+      # - xpack.security.authc.realms.ldap.ldap1.group_search.base_dn=ou=groups,dc=safepay,dc=local
     ulimits:
       memlock:
         soft: -1
@@ -76,6 +102,8 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+    # depends_on:
+    #   - auth-ldap
 
   ids-suricata:
     image: jasonish/suricata:latest
@@ -130,7 +158,9 @@ services:
     container_name: kibana
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-      - XPACK_SECURITY_ENABLED=false
+      - XPACK_SECURITY_ENABLED=true
+      # - ELASTICSEARCH_USERNAME=${KIBANA_SYSTEM_USER}
+      # - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD}
       - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=UfR2qXwQJQ8UgAfs/Ayz5IJ3rsCwmhBrAbJ0AKH8h88=
       - SERVER_BASEPATH=/kibana
       - SERVER_REWRITEBASEPATH=true
