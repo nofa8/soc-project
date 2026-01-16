@@ -106,8 +106,13 @@ services:
         hard: -1
     volumes:
       - elasticsearch-data:/usr/share/elasticsearch/data
-    expose:
-      - "9200"
+    # Production
+    # expose:
+    #   - "9200"
+
+    # Development Test and Debug
+    ports:
+      - "9200:9200"
     networks:
       default:
         aliases:
