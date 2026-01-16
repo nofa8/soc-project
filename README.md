@@ -41,18 +41,27 @@ graph TB
         IDS[ids-suricata]
         WAZUH[wazuh-manager]
         AGENT[wazuh-agent]
-        FB[filebeat]
         ES[(elasticsearch)]
         KIB[kibana :5601]
         MAIL[mailhog :8025]
     end
     
-    USER --> FW --> NGINX --> API
+    %% Traffic Flow
+    USER ==> FW ==> NGINX ==> API
     API --> DB
     API --> LDAP
+    
+    %% Log Data Flow (The SOC Pipeline)
+    FW -.-> AGENT
     VPN -.-> AGENT
-    IDS --> FB --> ES --> WAZUH
-    WAZUH --> MAIL
+    NGINX -.-> AGENT
+    API -.-> AGENT
+    IDS -.-> AGENT
+    
+    %% Analysis & Alerting
+    AGENT --"Raw Logs"--> WAZUH
+    WAZUH --"Alerts"--> MAIL
+    WAZUH --"Indexed Data"--> ES
     ES --> KIB
 ```
 
