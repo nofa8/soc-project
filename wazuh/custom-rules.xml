@@ -1,15 +1,15 @@
 <group name="soc,api,application">
 
-  <!-- API Application Events -->
+  <!-- ============================================ -->
+  <!-- APPLICATION LAYER: Authentication & Access  -->
+  <!-- ============================================ -->
 
   <rule id="100010" level="10">
     <decoded_as>json</decoded_as>
     <field name="soc_event">admin_override_access</field>
     <field name="auth_decision">override_granted</field>
-    <description>Privilege Escalation Detected (Admin Override)</description>
-    <mitre>
-      <id>T1078</id>
-    </mitre>
+    <description>Privilege Escalation: Admin Override Granted</description>
+    <mitre><id>T1078</id></mitre>
     <group>auth,privilege_escalation,</group>
   </rule>
 
@@ -21,22 +21,20 @@
     <group>api,authentication,</group>
   </rule>
 
-  <rule id="100003" level="5">
+  <rule id="100003" level="3">
     <decoded_as>json</decoded_as>
     <field name="soc_event">login_failed</field>
     <description>Failed API Login</description>
-    <mitre>
-      <id>T1110</id>
-    </mitre>
+    <mitre><id>T1110</id></mitre>
     <group>api,authentication_failed,</group>
   </rule>
 
-  <rule id="100004" level="10" frequency="5" timeframe="60">
+  <!-- Note: same_field used for JSON src_ip (not same_srcip which requires syslog srcip) -->
+  <rule id="100004" level="12" frequency="5" timeframe="60">
     <if_matched_sid>100003</if_matched_sid>
-    <description>Brute Force Attack Detected (Multiple Failed Logins)</description>
-    <mitre>
-      <id>T1110</id>
-    </mitre>
+    <same_field>src_ip</same_field>
+    <description>Brute Force Attack (API) - 5 failures in 60s</description>
+    <mitre><id>T1110</id></mitre>
     <group>api,bruteforce,</group>
   </rule>
 
@@ -44,11 +42,9 @@
     <decoded_as>json</decoded_as>
     <field name="soc_event">api_request</field>
     <field name="endpoint" type="pcre2">/items</field>
-    <field name="raw_parameter" type="pcre2">(?i)(union\s+select|or\s+1=1|or\s+'1'='1'|--|/\*|\*/)</field>
-    <description>SQL Injection Exploitation Detected</description>
-    <mitre>
-      <id>T1190</id>
-    </mitre>
+    <field name="raw_parameter" type="pcre2">(?i)(union\s+select|or\s+['"]?1['"]?\s*=\s*['"]?1|--|/\*|\*/)</field>
+    <description>SQL Injection Detected in API</description>
+    <mitre><id>T1190</id></mitre>
     <group>api,sqli,</group>
   </rule>
 
@@ -61,148 +57,68 @@
     <group>api,anomaly,</group>
   </rule>
 
-  <!-- Suricata: Recon / Scanning Detection -->
+  <!-- ============================================ -->
+  <!-- VPN LAYER: Remote Access                    -->
+  <!-- ============================================ -->
 
-  <rule id="100101" level="5">
-    <if_matched_group>suricata</if_matched_group>
-    <field name="event_type">^alert$</field>
-    <field name="alert.signature_id">1000001</field>
-    <description>Suricata: ICMP Echo Request (ping)</description>
-    <mitre>
-      <id>T1040</id>
-    </mitre>
-    <group>suricata,ids,reconnaissance,network,</group>
-  </rule>
-
-  <rule id="100102" level="7">
-    <if_matched_group>suricata</if_matched_group>
-    <field name="event_type">^alert$</field>
-    <field name="alert.signature_id">1000002</field>
-    <description>Suricata: SYN scan detected (possible reconnaissance)</description>
-    <mitre>
-      <id>T1595</id>
-    </mitre>
-    <group>suricata,ids,reconnaissance,network_scan,</group>
-  </rule>
-
-  <rule id="100103" level="7">
-    <if_matched_group>suricata</if_matched_group>
-    <field name="event_type">^alert$</field>
-    <field name="alert.signature_id">1000003</field>
-    <description>Suricata: FIN scan detected (possible reconnaissance)</description>
-    <mitre>
-      <id>T1595</id>
-    </mitre>
-    <group>suricata,ids,reconnaissance,network_scan,</group>
-  </rule>
-
-  <rule id="100104" level="7">
-    <if_matched_group>suricata</if_matched_group>
-    <field name="event_type">^alert$</field>
-    <field name="alert.signature_id">1000004</field>
-    <description>Suricata: XMAS scan detected (possible reconnaissance)</description>
-    <mitre>
-      <id>T1595</id>
-    </mitre>
-    <group>suricata,ids,reconnaissance,network_scan,</group>
-  </rule>
-
-  <!-- Suricata: Suspicious HTTP User Agents -->
-
-  <rule id="100110" level="10">
-    <if_matched_group>suricata</if_matched_group>
-    <field name="event_type">^alert$</field>
-    <field name="alert.signature_id">1100001</field>
-    <description>Suricata: Suspicious HTTP User-Agent (curl)</description>
-    <mitre>
-      <id>T1071</id>
-    </mitre>
-    <group>suricata,ids,http,abuse,</group>
-  </rule>
-
-  <rule id="100111" level="10">
-    <if_matched_group>suricata</if_matched_group>
-    <field name="event_type">^alert$</field>
-    <field name="alert.signature_id">1100002</field>
-    <description>Suricata: Suspicious HTTP User-Agent (SQLMap)</description>
-    <mitre>
-      <id>T1190</id>
-    </mitre>
-    <group>suricata,ids,http,abuse,web_attack,</group>
-  </rule>
-
-  <!-- Suricata: Brute Force / Auth Abuse -->
-
-  <rule id="100120" level="12">
-    <if_matched_group>suricata</if_matched_group>
-    <field name="event_type">^alert$</field>
-    <field name="alert.signature_id">1200001</field>
-    <description>Suricata: SSH brute force attempts</description>
-    <mitre>
-      <id>T1110</id>
-    </mitre>
-    <group>suricata,ids,bruteforce,authentication,</group>
-  </rule>
-
-  <!-- Suricata Correlation -->
-
-  <rule id="100130" level="14" frequency="10" timeframe="60">
-    <if_matched_group>suricata</if_matched_group>
-    <description>Multiple Suricata alerts (potential coordinated activity)</description>
-    <mitre>
-      <id>T1589</id>
-    </mitre>
-    <group>suricata,ids,correlation,</group>
-  </rule>
-
-  <rule id="100131" level="13" frequency="3" timeframe="120">
-    <if_matched_group>suricata</if_matched_group>
-    <same_srcip />
-    <description>Multiple Suricata alerts from the same source IP</description>
-    <mitre>
-      <id>T1589</id>
-    </mitre>
-    <group>suricata,ids,correlation,</group>
-  </rule>
-
-  <!-- Phase 3.3: VPN Detection Rules -->
-
-  <rule id="100020" level="7">
+  <rule id="100020" level="4">
     <match>Invalid handshake|peer not found|unauthorized</match>
-    <description>VPN Authentication Failure</description>
-    <mitre>
-      <id>T1110</id>
-    </mitre>
+    <description>VPN Auth Failure (Single)</description>
     <group>vpn,authentication_failed,</group>
   </rule>
 
   <rule id="100021" level="10" frequency="5" timeframe="60">
     <if_matched_sid>100020</if_matched_sid>
-    <description>VPN Brute Force Attempt Detected</description>
-    <mitre>
-      <id>T1110</id>
-    </mitre>
+    <same_srcip />
+    <description>VPN Brute Force Attack Detected</description>
+    <mitre><id>T1110</id></mitre>
     <group>vpn,bruteforce,</group>
   </rule>
 
-  <!-- Phase 3.4: Firewall Detection Rules -->
+  <!-- ============================================ -->
+  <!-- FIREWALL LAYER: Perimeter                   -->
+  <!-- ============================================ -->
 
-  <rule id="100030" level="7">
-    <match>FW_BLOCK_</match>
-    <description>Firewall Blocked Connection</description>
-    <mitre>
-      <id>T1046</id>
-    </mitre>
+  <rule id="100030" level="3">
+    <match>FIREWALL-DROP:</match>
+    <description>Firewall Packet Drop</description>
+    <options>no_full_log</options>
     <group>firewall,blocked,</group>
   </rule>
 
-  <rule id="100031" level="10" frequency="10" timeframe="60">
+  <rule id="100031" level="10" frequency="15" timeframe="60">
     <if_matched_sid>100030</if_matched_sid>
-    <description>Network Scan Detected (Firewall)</description>
-    <mitre>
-      <id>T1046</id>
-    </mitre>
+    <same_srcip />
+    <description>Port Scan Detected (Firewall Flood)</description>
+    <mitre><id>T1046</id></mitre>
     <group>firewall,reconnaissance,</group>
+  </rule>
+
+  <!-- ============================================ -->
+  <!-- IDS LAYER: Suricata                         -->
+  <!-- ============================================ -->
+
+  <rule id="100101" level="5">
+    <if_matched_group>suricata</if_matched_group>
+    <field name="alert.signature_id">1000001</field>
+    <description>Suricata: ICMP Reconnaissance</description>
+    <group>suricata,ids,reconnaissance,</group>
+  </rule>
+
+  <rule id="100102" level="8">
+    <if_matched_group>suricata</if_matched_group>
+    <field name="alert.signature_id">1000002</field>
+    <description>Suricata: SYN Scan (Potential Nmap)</description>
+    <mitre><id>T1595</id></mitre>
+    <group>suricata,ids,reconnaissance,</group>
+  </rule>
+
+  <rule id="100110" level="12">
+    <if_matched_group>suricata</if_matched_group>
+    <field name="alert.signature_id">1100001</field>
+    <description>Suricata: Suspicious User-Agent (Attacker Tool)</description>
+    <mitre><id>T1071</id></mitre>
+    <group>suricata,ids,web_attack,</group>
   </rule>
 
 </group>

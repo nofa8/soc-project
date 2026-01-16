@@ -1,63 +1,59 @@
 # 🛡️ SafePay SOC Project
 
-> **Security Operations Center Prototype** for a mid-sized FinTech organization
+> **Enterprise-Grade Security Operations Center Prototype** for a mid-sized FinTech organization
 
-A containerized security monitoring environment demonstrating log collection, correlation, and analysis using industry-standard tools.
+A containerized security monitoring environment demonstrating log collection, correlation, threat detection, and automated alerting using industry-standard tools.
 
 ---
 
-## 📋 Project Overview
+## 📋 Executive Summary
 
-This project implements a **SOC prototype** capable of:
-
-- **Collecting** security events from application, network, and system layers
-- **Correlating** events using a SIEM platform (Wazuh)
-- **Analyzing** and visualizing security incidents
-- **Demonstrating** detection of intentional vulnerabilities
-
-### Business Context
-
-| Attribute | Value |
-| --------- | ----- |
-| **Company** | SafePay (FinTech Startup) |
-| **Employees** | ~90 |
-| **Location** | Lisbon HQ, remote EU engineers |
-| **Compliance** | GDPR, PSD2 (partial) |
+| Metric | Value |
+|--------|-------|
+| **Containers** | 13 services |
+| **Detection Rules** | 10 custom rules |
+| **Coverage** | App, Network, VPN, Firewall |
+| **Validation** | `make test-all` (automated) |
 
 ---
 
 ## 🏗️ Architecture
 
-```txt
-┌─────────────────────────────────────────────────────────────────┐
-│                        EXTERNAL ACCESS                          │
-│                              :80                                │
-└───────────────────────────────┬─────────────────────────────────┘
-                                │
-┌───────────────────────────────▼─────────────────────────────────┐
-│                         proxy-nginx                             │
-│                    (Reverse Proxy + WAF)                        │
-│                    JSON access logging                          │
-└───────────────────────────────┬─────────────────────────────────┘
-                                │
-┌───────────────────────────────▼─────────────────────────────────┐
-│                         api-service                             │
-│                    (FastAPI Backend)                            │
-│              Structured JSON security logs                      │
-└─────────────┬────────────────────────────────┬──────────────────┘
-              │                                │
-┌─────────────▼──────────┐      ┌──────────────▼─────────────────┐
-│       db-service       │      │         auth-ldap              │
-│      (PostgreSQL)      │      │        (OpenLDAP)              │
-└────────────────────────┘      └────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────────┐
-│                    SECURITY & MONITORING                        │
-├─────────────────┬─────────────────────┬─────────────────────────┤
-│  ids-suricata   │   wazuh-manager     │       filebeat          │
-│   (Network IDS) │      (SIEM)         │    (Log Shipper)        │
-│  EVE JSON logs  │   Alert correlation │   Collects all logs     │
-└─────────────────┴─────────────────────┴─────────────────────────┘
+```mermaid
+graph TB
+    subgraph External["External Access"]
+        USER[User :80]
+    end
+    
+    subgraph Perimeter["Perimeter Layer"]
+        FW[firewall-iptables]
+        VPN[vpn-wireguard :51820]
+        NGINX[proxy-nginx]
+    end
+    
+    subgraph Application["Application Layer"]
+        API[api-service]
+        DB[(db-service)]
+        LDAP[auth-ldap]
+    end
+    
+    subgraph Security["Security & Monitoring"]
+        IDS[ids-suricata]
+        WAZUH[wazuh-manager]
+        AGENT[wazuh-agent]
+        FB[filebeat]
+        ES[(elasticsearch)]
+        KIB[kibana :5601]
+        MAIL[mailhog :8025]
+    end
+    
+    USER --> FW --> NGINX --> API
+    API --> DB
+    API --> LDAP
+    VPN -.-> AGENT
+    IDS --> FB --> ES --> WAZUH
+    WAZUH --> MAIL
+    ES --> KIB
 ```
 
 ---
@@ -65,235 +61,160 @@ This project implements a **SOC prototype** capable of:
 ## 🛠️ Technology Stack
 
 | Layer | Technology | Purpose |
-| ----- | ---------- | ------- |
-| **Containerization** | Docker + Compose | Service orchestration |
+|-------|------------|---------|
+| **Containerization** | Docker + Compose | 13-service orchestration |
 | **Backend** | FastAPI (Python 3.13) | REST API with security logging |
-| **Reverse Proxy** | Nginx | TLS termination, access logging |
+| **Reverse Proxy** | Nginx | TLS termination, JSON access logs |
 | **Database** | PostgreSQL 15 | Transaction data |
 | **Identity** | OpenLDAP | Centralized authentication |
 | **IDS** | Suricata | Network intrusion detection |
 | **SIEM** | Wazuh | Event correlation & alerts |
-| **Log Shipper** | Filebeat | Log collection & forwarding |
+| **Log Shipper** | Filebeat | Log collection → Elasticsearch |
+| **VPN** | WireGuard | Remote access with auth logging |
+| **Firewall** | iptables | Perimeter blocking with logging |
+| **Notifications** | MailHog | Email alert capture |
 
 ---
 
 ## 🚀 Quick Start
 
-### Prerequisites
-
-- Docker ≥ 24.0
-- Docker Compose v2
-- 8-12 GB RAM recommended
-- Linux host (native or WSL2)
-
-### 1. Clone & Configure
-
 ```bash
+# 1. Clone & configure
 git clone <repository-url>
 cd soc-project
-
-# Create environment file
 cp .env.example .env
 
-# Edit .env with your network interface
-# Run: ip link show
-# Set SURICATA_INTERFACE to your interface (e.g., enp12s0, eth0)
-```
+# 2. Set your network interface in .env
+# Run: ip link show (use e.g., enp12s0, eth0)
 
-### 2. Start Services
-
-```bash
-# Start all containers
+# 3. Start all services
 docker-compose up -d
 
-# View container status
-docker ps
+# 4. Verify operational status
+make preflight
 
-# Check logs
-docker logs api-service
-docker logs ids-suricata
+# 5. Run detection tests
+make test-all
 ```
+
+### Access Points
+
+| Service | URL |
+|---------|-----|
+| **API** | http://localhost |
+| **Kibana** | http://localhost:5601 |
+| **MailHog** | http://localhost:8025 |
+
+---
+
+## 🎯 Detection Rules (Tuned for SOC Maturity)
+
+### Severity Balancing
+
+| Rule | Description | Level | Trigger |
+|------|-------------|-------|---------|
+| 100002 | Login Success | 3 | Single event |
+| 100003 | Login Failed | 3 | Single event |
+| 100004 | **Brute Force** | 12 | 5 failures/60s |
+| 100005 | **SQL Injection** | 12 | Payload match |
+| 100006 | API Error 500 | 7 | Server error |
+| 100010 | **Privilege Escalation** | 10 | Admin override |
+| 100020 | VPN Auth Fail | 4 | Single event |
+| 100021 | **VPN Brute Force** | 10 | 5 failures/60s |
+| 100030 | Firewall Drop | 3 | Single event |
+| 100031 | **Port Scan** | 10 | 15 drops/60s |
+
+> **Design Principle:** Single events = Low severity. Correlated patterns = High severity.
+
+---
+
+## 🧪 Automated Testing
+
+### One-Command Validation
+
+```bash
+make test-all    # Run ALL detection tests
+```
+
+### Individual Tests
+
+| Test | Command | Rule Verified |
+|------|---------|---------------|
+| Privilege Escalation | `make test-privilege` | 100010 |
+| SQL Injection | `make test-sqli` | 100005 |
+| Brute Force | `make brute-force` | 100004 |
+| Firewall Block | `make test-fw-block` | 100030 |
+| VPN Noise | `make test-vpn` | 100020 |
+| Kill Chain | `make test-killchain` | Multiple |
+
+### Detection Assertion
+
+All critical tests include **automatic verification** via Elasticsearch:
+- ✅ Attack executed
+- ✅ Alert indexed in ES
+- ✅ Rule ID confirmed
 
 ---
 
 ## 📁 Project Structure
 
-```txt
+```
 soc-project/
-├── docker-compose.yml       # Service definitions
-├── .env                     # Environment variables
-├── backend-fastapi/         # FastAPI application
-│   ├── app/
-│   │   ├── main.py         # API endpoints
-│   │   ├── logger.py       # JSON security logger
-│   │   └── middleware.py   # Request tracking
-│   └── Dockerfile
-├── nginx/
-│   └── nginx.conf          # JSON access logging
-├── suricata/
-│   ├── suricata.yaml       # IDS configuration
-│   └── rules/
-│       └── local.rules     # Custom detection rules
-├── wazuh/
-│   ├── ossec.conf          # SIEM configuration
-│   └── custom-rules.xml    # Detection rules
-├── filebeat/
-│   └── filebeat.yml        # Log collection config
-└── logs/                   # Centralized log directory
-    ├── api/                # FastAPI security logs
-    ├── nginx/              # Access & error logs
-    └── suricata/           # IDS alerts (EVE JSON)
+├── docker-compose.yml       # 13-service orchestration
+├── Makefile                 # Automated testing suite
+├── backend-fastapi/         # FastAPI with security logging
+├── nginx/                   # Reverse proxy config
+├── suricata/                # IDS rules
+├── wazuh/                   # SIEM custom rules
+├── firewall/                # iptables scripts
+├── vpn/                     # WireGuard config
+├── config/                  # Agent configurations
+├── logs/                    # Centralized log directory
+└── docs/                    # Documentation
+    ├── vulnerabilities.md   # Intentional vulns
+    └── tests.md             # Test methodology
 ```
 
 ---
 
 ## 📊 Log Sources
 
-| Source | Log Type | Location |
-| ------ | -------- | -------- |
-| FastAPI | Security events (JSON) | `logs/api/security.json` |
-| Nginx | Access logs (JSON) | `logs/nginx/access.log` |
-| Nginx | Error logs | `logs/nginx/error.log` |
-| Suricata | EVE alerts (JSON) | `logs/suricata/eve.jsonl` |
-| Suricata | Stats | `logs/suricata/stats.log` |
-
----
-
-## 🎯 Implemented Vulnerabilities
-
-These **intentional vulnerabilities** are documented for demonstration:
-
-| Vulnerability | Endpoint | Detection |
-| ------------- | -------- | --------- |
-| SQL Injection Pattern | `GET /items/{id}` | App logs + Suricata |
-| Broken Auth | `POST /login` | Auth logs |
-| Port Scanning | N/A | Suricata IDS |
-| API Abuse | High request rate | Nginx logs |
-
----
-
-## 🔍 Detection Rules
-
-### Suricata Rules (`suricata/rules/local.rules`)
-
-```txt
-alert icmp any any -> any any (msg:"ICMP connection detected"; sid:1000001;)
-alert tcp any any -> any 8000 (msg:"Attack on API detected"; sid:1000002;)
-```
-
-### Wazuh Rules (TODO)
-
-- Brute force: >5 failures in 60 seconds
-- SQLi: Pattern matching in URL parameters
-- Privilege abuse: Role mismatch detection
-
----
-
-## 📈 Project Progress
-
-| Phase | Status | Description |
-| ----- | ------ | ----------- |
-| **Phase 1** | ✅ Complete | Core infrastructure (Docker, API, Nginx) |
-| **Phase 2** | 🔄 In Progress | SIEM integration & custom rules |
-| **Phase 3** | ⏳ Pending | Vulnerability demonstrations |
-| **Phase 4** | ⏳ Pending | Attack execution & detection |
-| **Phase 5** | ⏳ Pending | Dashboards & reporting |
-
----
-
-## 🧪 Testing
-
-### Makefile Test Targets
-
-The repository includes a `Makefile` with convenient test targets to exercise the API and network detection components.
-Configurable variables (can be set in an `env` file or passed on the `make` command line):
-
-- `TARGET_IP` — target for Nmap scans (default: `192.0.2.10`)
-- `NETWORK` — network range for host discovery (default: `192.0.2.0/24`)
-- `API_URL` — base URL for API tests (default: `http://192.0.2.10`)
-
-Examples:
-
-```bash
-# Help Command shows all commands available
-make help
-
-# Run only API tests against a locally-running API
-make api-tests API_URL=http://localhost
-
-# Run network scans against a specific host/network
-make network-tests TARGET_IP=192.0.2.5 NETWORK=192.0.2.0/24
-```
-
-### View Suricata Alerts
-
-```bash
-# Check if Suricata is capturing traffic
-docker logs ids-suricata
-
-# View alerts
-tail -f logs/suricata/eve.jsonl | jq '.alert'
-```
-
-### Manual API Testing
-
-```bash
-# Health check
-curl http://localhost/
-
-# Generate authentication logs
-curl -X POST http://localhost/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"attacker","password":"password123"}'
-
-# Trigger SQLi detection
-curl "http://localhost/items/1' UNION SELECT * FROM users--"
-
-# View generated logs
-tail -f logs/api/security.json
-```
+| Source | Format | Location |
+|--------|--------|----------|
+| FastAPI | JSON | `logs/api/security.json` |
+| Nginx | JSON | `logs/nginx/access.log` |
+| Suricata | EVE JSON | `logs/suricata/eve.jsonl` |
+| Firewall | Syslog | `/var/log/syslog` |
 
 ---
 
 ## 🔧 Troubleshooting
 
-### Permission Denied Errors
-
-All volume mounts include SELinux labels (`:z`). If issues persist:
-
 ```bash
-# Fix permissions
-chmod -R 777 logs/
-docker-compose down && docker-compose up -d
-```
+# Check container status
+make status
 
-### Suricata Not Capturing
+# Verify SIEM pipeline
+make siem-ready
 
-1. Check network interface exists: `ip link show`
-2. Update `.env` with correct interface
-3. Restart: `docker-compose restart ids-suricata`
+# View Wazuh alerts
+make view-alerts
 
-### Container Not Starting
-
-```bash
-# Check logs
-docker logs <container-name>
-
-# Verify configuration
-docker-compose config
+# Check MailHog for notifications
+curl http://localhost:8025/api/v2/messages | jq '.count'
 ```
 
 ---
 
 ## 📚 References
 
-- [NIST SP 800-92](https://csrc.nist.gov/publications/detail/sp/800-92/final) - Log Management Guide
-- [MITRE ATT&CK](https://attack.mitre.org/) - Threat Classification
-- [Wazuh Documentation](https://documentation.wazuh.com/)
-- [Suricata Documentation](https://suricata.readthedocs.io/)
+- [NIST SP 800-92](https://csrc.nist.gov/publications/detail/sp/800-92/final) - Log Management
+- [NIST SP 800-61r2](https://csrc.nist.gov/publications/detail/sp/800-61/rev-2/final) - Incident Handling
+- [MITRE ATT&CK](https://attack.mitre.org/) - Threat Framework
+- [OWASP Top 10](https://owasp.org/Top10/) - Web Security Risks
 
 ---
 
 ## 📝 License
 
-This project is for educational purposes as part of a Security Operations Center coursework.
+Educational project for Security Operations Center coursework.

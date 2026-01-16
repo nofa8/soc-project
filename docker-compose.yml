@@ -78,17 +78,17 @@ services:
     networks:
       - default
 
-  # Phase 3.4: Firewall Layer (iptables)
-  # Justification: Host network mode is required to observe real ingress traffic for perimeter logging.
+  # Phase 3.4: Firewall Layer (Docker-Compatible)
+  # Uses DOCKER-USER chain and interface-based filtering (br+, docker0)
   firewall:
     image: debian:bookworm-slim
     container_name: firewall-iptables
     cap_add:
       - NET_ADMIN
     network_mode: host
-    command: [ "sh", "-c", "apt-get update && apt-get install -y iptables && iptables-restore < /etc/iptables/rules.v4 && tail -f /dev/null" ]
+    command: [ "sh", "-c", "apt-get update && apt-get install -y iptables && /scripts/apply_rules.sh" ]
     volumes:
-      - ./firewall/rules.v4:/etc/iptables/rules.v4:ro,z
+      - ./firewall/apply_rules.sh:/scripts/apply_rules.sh:ro,z
 
   # =============================
   # SECURITY & MONITORING
@@ -113,11 +113,7 @@ services:
         aliases:
           - wazuh.indexer
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "curl -s http://localhost:9200/_cluster/health | grep -q 'green\\|yellow'",
-        ]
+      test: [ "CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q 'green\\|yellow'" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -162,6 +158,8 @@ services:
     volumes:
       - ./config/agent/ossec.conf:/var/ossec/etc/ossec.conf:z
       - ./logs:/var/log/soc_logs:ro
+      # Host syslog for firewall events
+      - /var/log/syslog:/var/log/host_syslog:ro
     depends_on:
       - wazuh-manager
 
@@ -191,7 +189,7 @@ services:
     user: root
     #environment:
     #  - ELASTICSEARCH_HOST=http://wazuh.indexer:9200
-    command: ["filebeat", "-e", "-strict.perms=false"]
+    command: [ "filebeat", "-e", "-strict.perms=false" ]
     depends_on:
       elasticsearch:
         condition: service_healthy
