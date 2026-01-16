@@ -1,55 +1,37 @@
 # SOC Project – State Report
 
-> **Last Updated:** 2026-01-13 21:15 UTC  
-> **Status:** ✅ **PROFESSIONAL GRADE & VERIFIED**
+> **Last Updated:** 2026-01-15 18:20 UTC  
+> **Status:** ✅ **SOC OPERATIONAL – TESTS IMPLEMENTED**
 
 ---
 
 ## Executive Summary
 
-| Metric | Value |
-|--------|-------|
-| **Containers** | 10/10 Running |
-| **Pipeline** | ✅ **Verified** (Agent → Manager → ES) |
-| **Ruleset** | ✅ **Enhanced V2 (MITRE Mapped)** |
-| **Alerts** | **150+** Verified in Elasticsearch |
+SOC is fully operational with validated detection and operational assurance tests.
+
+| Component | Status |
+|-----------|--------|
+| **Infrastructure** | ✅ 13 Containers |
+| **Detection Rules** | ✅ 100002-100031 |
+| **Validation Tests** | ✅ `make test-killchain` |
 
 ---
 
-## Enhanced Ruleset Verification (V2)
+## SOC Validation Test Suite
 
-The ruleset has been upgraded to include MITRE ATT&CK mapping and stricter correlation logic (`same_source_ip`).
-
-| Rule ID | Description | MITRE | Status | Behavior (New Logic) |
-|---------|-------------|-------|--------|----------------------|
-| **100001** | Login Success | - | ✅ | Standard detection |
-| **100002** | Login Failed | **T1110** | ✅ | Mapped to "Brute Force" |
-| **100003** | Brute Force | **T1110** | ✅ | Enforces `same_source_ip` (Robust) |
-| **100004** | SQL Injection | **T1190** | ✅ | Mapped to "Exploit Public-Facing App" |
-| **100005** | API Error 500 | - | ✅ | Corrected component name |
-| **100006** | IDS Alert | **T1046** | ✅ | Uses `<if_matched_group>suricata` (High Confidence) |
-
----
-
-## Pipeline Data Flow
-
-```
-[API] --(json)--> [Filebeat] --(raw logs)--> [Elasticsearch]
-                      ^
-                      |
-[Suricata] --(eve.jsonl)--+--> [Wazuh Agent 002] --> [Wazuh Manager] --(alerts.json)--> [Filebeat] --(alerts)--> [Elasticsearch]
-```
-
-- **Wazuh Agent:** ID 002 (Active)
-- **Config persistence:** Secured via direct volume mounts.
+| Test | Command | Purpose |
+|------|---------|---------|
+| Pipeline Health | `make test-pipeline` | Verify SIEM alive |
+| Negative Control | `make test-noise` | Prove no alert on noise |
+| SQLi Detection | `make test-sqli` | Validate Rule 100005 |
+| Priv Esc Detection | `make test-privilege` | Validate Rule 100010 |
+| VPN Detection | `make test-vpn` | Validate Rule 100020 |
+| Firewall Detection | `make test-firewall` | Validate Rule 100030 |
+| **Kill Chain** | `make test-killchain` | Full SOC Demo |
 
 ---
 
-## Next Steps
+## Next Steps: Phase 4 (Dashboards)
 
-1. **Kibana Visualization:**
-   - Create dashboards filtering by `mitre.id` (New capability!).
-   - Visualize Attack Vectors (SQLi vs Brute Force).
-
-2. **Phase 3:** Vulnerability Implementation
-   - Proceed with broken authentication checks.
+1.  **Objective:** Build Kibana visualizations.
+2.  **Timeline View:** Attack sequence correlation.

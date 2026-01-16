@@ -2,6 +2,17 @@
 
   <!-- API Application Events -->
 
+  <rule id="100010" level="10">
+    <decoded_as>json</decoded_as>
+    <field name="soc_event">admin_override_access</field>
+    <field name="auth_decision">override_granted</field>
+    <description>Privilege Escalation Detected (Admin Override)</description>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
+    <group>auth,privilege_escalation,</group>
+  </rule>
+
   <rule id="100002" level="3">
     <decoded_as>json</decoded_as>
     <field name="soc_event">login_success</field>
@@ -31,8 +42,10 @@
 
   <rule id="100005" level="12">
     <decoded_as>json</decoded_as>
-    <field name="soc_event">possible_sqli</field>
-    <description>SQL Injection Attempt Detected</description>
+    <field name="soc_event">api_request</field>
+    <field name="endpoint" type="pcre2">/items</field>
+    <field name="raw_parameter" type="pcre2">(?i)(union\s+select|or\s+1=1|or\s+'1'='1'|--|/\*|\*/)</field>
+    <description>SQL Injection Exploitation Detected</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -151,4 +164,45 @@
     </mitre>
     <group>suricata,ids,correlation,</group>
   </rule>
+
+  <!-- Phase 3.3: VPN Detection Rules -->
+
+  <rule id="100020" level="7">
+    <match>Invalid handshake|peer not found|unauthorized</match>
+    <description>VPN Authentication Failure</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>vpn,authentication_failed,</group>
+  </rule>
+
+  <rule id="100021" level="10" frequency="5" timeframe="60">
+    <if_matched_sid>100020</if_matched_sid>
+    <description>VPN Brute Force Attempt Detected</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>vpn,bruteforce,</group>
+  </rule>
+
+  <!-- Phase 3.4: Firewall Detection Rules -->
+
+  <rule id="100030" level="7">
+    <match>FW_BLOCK_</match>
+    <description>Firewall Blocked Connection</description>
+    <mitre>
+      <id>T1046</id>
+    </mitre>
+    <group>firewall,blocked,</group>
+  </rule>
+
+  <rule id="100031" level="10" frequency="10" timeframe="60">
+    <if_matched_sid>100030</if_matched_sid>
+    <description>Network Scan Detected (Firewall)</description>
+    <mitre>
+      <id>T1046</id>
+    </mitre>
+    <group>firewall,reconnaissance,</group>
+  </rule>
+
 </group>

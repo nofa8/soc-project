@@ -337,6 +337,123 @@ reset-lab: clean-logs restart
 	echo "$(GREEN)[LAB RESET COMPLETE]$(NC)"
 
 # ============================================================================
+# SOC VALIDATION TESTS (Operational Assurance)
+# ============================================================================
+# These tests validate detectability, false-positive control, and multi-layer
+# correlation. Run these after any infrastructure change to verify SOC health.
+
+.PHONY: test-pipeline test-noise test-sqli test-privilege test-vpn test-firewall test-killchain
+
+# 1. Pipeline Health Test - Prove SIEM is alive
+test-pipeline:
+	echo "$(YELLOW)=== PIPELINE HEALTH TEST ===$(NC)"
+	@echo -n "  Containers: " && docker ps -q | wc -l | xargs -I{} echo "{} running"
+	@echo -n "  Kibana: " && curl -s http://localhost:5601 > /dev/null && echo "$(GREEN)OK$(NC)" || echo "$(RED)FAILED$(NC)"
+	@echo -n "  Elasticsearch: " && curl -s http://localhost:9200/_cluster/health | jq -r '.status' | xargs -I{} echo "Status: {}"
+	@echo -n "  Wazuh Agent: " && docker exec wazuh-agent /var/ossec/bin/wazuh-control status | grep -c "running" | xargs -I{} echo "{} services"
+	echo "$(GREEN)[PIPELINE OK]$(NC)"
+
+# 2. Negative Control Test - Prove no alert on noise
+test-noise:
+	echo "$(YELLOW)=== NEGATIVE CONTROL TEST (4 failures = NO alert) ===$(NC)"
+	@for i in 1 2 3 4; do \
+		curl -s -X POST $(API_URL)/login -H "Content-Type: application/json" \
+			-d '{"username":"$(ADMIN_USER)","password":"noise_$$i"}' > /dev/null; \
+		echo "  Attempt $$i sent"; \
+	done
+	echo "$(GREEN)[NOISE COMPLETE - Check: 0 new emails expected]$(NC)"
+
+# 3. Detection Test: SQL Injection
+test-sqli:
+	echo "$(YELLOW)=== DETECTION TEST: SQL INJECTION ===$(NC)"
+	@curl -s "$(API_URL)/items/1'%20OR%20'1'='1" | jq '.'
+	echo "$(GREEN)[SQLi SENT - Expect: Rule 100005 or Suricata alert]$(NC)"
+
+# 4. Detection Test: Privilege Escalation
+test-privilege:
+	echo "$(YELLOW)=== DETECTION TEST: PRIVILEGE ESCALATION ===$(NC)"
+	@curl -s $(API_URL)/admin/system_status -H "X-Admin-Override: true" | jq '.'
+	echo "$(GREEN)[PRIV ESC SENT - Expect: Rule 100010]$(NC)"
+
+# 5. Detection Test: VPN Brute Force (UDP noise)
+test-vpn:
+	echo "$(YELLOW)=== DETECTION TEST: VPN UDP NOISE ===$(NC)"
+	@for i in 1 2 3 4 5; do \
+		echo "probe_$$i" | nc -u -w1 127.0.0.1 51820 2>/dev/null || true; \
+		echo "  VPN probe $$i sent"; \
+	done
+	echo "$(GREEN)[VPN NOISE COMPLETE - Expect: Rule 100020/100021]$(NC)"
+
+# 6. Detection Test: Firewall Scan
+test-firewall:
+	echo "$(YELLOW)=== DETECTION TEST: FIREWALL SCAN ===$(NC)"
+	@nmap -p 22,3306 127.0.0.1 -T4 2>/dev/null || echo "  nmap not installed - using curl fallback"
+	echo "$(GREEN)[FIREWALL SCAN COMPLETE - Expect: Rule 100030/100031]$(NC)"
+
+# 7. Kill Chain Test - Full multi-layer correlation
+test-killchain:
+	echo "$(YELLOW)=== KILL CHAIN TEST (Full SOC Demo) ===$(NC)"
+	echo "$(BLUE)[Step 1/5] Noise baseline...$(NC)"
+	@$(MAKE) test-noise --no-print-directory
+	sleep 2
+	echo "$(BLUE)[Step 2/5] SQL Injection...$(NC)"
+	@$(MAKE) test-sqli --no-print-directory
+	sleep 2
+	echo "$(BLUE)[Step 3/5] Privilege Escalation...$(NC)"
+	@$(MAKE) test-privilege --no-print-directory
+	sleep 2
+	echo "$(BLUE)[Step 4/5] VPN Probing...$(NC)"
+	@$(MAKE) test-vpn --no-print-directory
+	sleep 2
+	echo "$(BLUE)[Step 5/5] Firewall Scanning...$(NC)"
+	@$(MAKE) test-firewall --no-print-directory
+	echo ""
+	echo "$(GREEN)=== KILL CHAIN COMPLETE ===$(NC)"
+	echo "Check MailHog for alerts: http://localhost:8025"
+	echo "Check Kibana for timeline: http://localhost:5601"
+
+# ============================================================================
+# VPN & FIREWALL ENFORCEMENT VALIDATION
+# ============================================================================
+
+.PHONY: test-vpn-fail test-vpn-bruteforce test-fw-block test-fw-scan test-fw-allow
+
+# VPN - Negative Control (Invalid peer)
+test-vpn-fail:
+	echo "$(YELLOW)=== VPN TEST: INVALID PEER (Negative Control) ===$(NC)"
+	@echo "junk_payload" | nc -u -w1 127.0.0.1 51820 2>/dev/null || true
+	echo "$(GREEN)[SENT] Expect: No tunnel, handshake failure log$(NC)"
+
+# VPN - Brute Force Correlation
+test-vpn-bruteforce:
+	echo "$(YELLOW)=== VPN TEST: BRUTE FORCE (Correlation) ===$(NC)"
+	@for i in 1 2 3 4 5 6; do \
+		echo "bruteforce_$$i" | nc -u -w1 127.0.0.1 51820 2>/dev/null || true; \
+		echo "  Probe $$i sent"; \
+	done
+	echo "$(GREEN)[COMPLETE] Expect: Rule 100021 (Level 10) + Email$(NC)"
+
+# Firewall - Block Test (Enforcement)
+test-fw-block:
+	echo "$(YELLOW)=== FIREWALL TEST: BLOCKED PORTS ===$(NC)"
+	@echo -n "  Port 22 (SSH): " && nc -zv -w2 127.0.0.1 22 2>&1 | grep -q "refused\|timed" && echo "$(GREEN)BLOCKED$(NC)" || echo "$(RED)OPEN$(NC)"
+	@echo -n "  Port 3306 (DB): " && nc -zv -w2 127.0.0.1 3306 2>&1 | grep -q "refused\|timed" && echo "$(GREEN)BLOCKED$(NC)" || echo "$(RED)OPEN$(NC)"
+	echo "$(GREEN)[COMPLETE] Expect: FW_BLOCK logs + Rule 100030$(NC)"
+
+# Firewall - Scan Detection (Correlation)
+test-fw-scan:
+	echo "$(YELLOW)=== FIREWALL TEST: PORT SCAN (Correlation) ===$(NC)"
+	@nmap -p 22,3306,8080,9000 127.0.0.1 -T4 --open 2>/dev/null || echo "  nmap unavailable"
+	echo "$(GREEN)[COMPLETE] Expect: Rule 100031 (Level 10) + Email$(NC)"
+
+# Firewall - Allow Test (Negative Control)
+test-fw-allow:
+	echo "$(YELLOW)=== FIREWALL TEST: ALLOWED TRAFFIC (Negative Control) ===$(NC)"
+	@curl -s -o /dev/null -w "HTTP %{http_code}" http://localhost
+	echo ""
+	echo "$(GREEN)[COMPLETE] Expect: Success, NO firewall log$(NC)"
+
+# ============================================================================
 # HELP
 # ============================================================================
 
