@@ -106,11 +106,9 @@ services:
         hard: -1
     volumes:
       - elasticsearch-data:/usr/share/elasticsearch/data
-    # Production
     # expose:
     #   - "9200"
-
-    # Development Test and Debug
+    # Exposing on host for direct access for testing purposes
     ports:
       - "9200:9200"
     networks:
@@ -118,7 +116,7 @@ services:
         aliases:
           - wazuh.indexer
     healthcheck:
-      test: [ "CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q 'green\\|yellow'" ]
+      test: [ "CMD-SHELL", "curl -s http://elasticsearch:9200/_cluster/health | grep -q 'green\\|yellow'" ]
       interval: 30s
       timeout: 10s
       retries: 5
