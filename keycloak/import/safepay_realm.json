@@ -20,16 +20,43 @@
 
   "clients": [
     {
-      "clientId": "oauth2-proxy",
-      "name": "OAuth2 Proxy",
+      "clientId": "fastapi-client",
+      "enabled": true,
       "protocol": "openid-connect",
-      "publicClient": true,
+      "publicClient": false,
+      "secret": "fastapi-secret",
+      "redirectUris": ["http://localhost/callback"],
       "standardFlowEnabled": true,
-      "redirectUris": ["http://localhost/oauth2/callback"],
-      "baseUrl": "/",
-      "attributes": {
-        "pkce.code.challenge.method": "S256"
-      }
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": true
+    },
+    {
+      "clientId": "kibana-client",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "kibana-secret",
+      "redirectUris": [
+        "http://localhost/kibana/api/security/oidc/callback"
+      ],
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false
+    }
+  ],
+
+  "users": [
+    {
+      "username": "admin",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["admin"]
     }
   ],
 

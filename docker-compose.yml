@@ -22,7 +22,6 @@ services:
       - ./logs/nginx:/var/log/nginx:z
     depends_on:
       - kibana
-      - oauth2-proxy
       - api-service
 
   db-service:
@@ -40,28 +39,6 @@ services:
   # ========================
   # AUTHENTICATION SERVICES
   # ========================
-  oauth2-proxy:
-    image: quay.io/oauth2-proxy/oauth2-proxy:v7.6.0
-    container_name: oauth2-proxy
-    restart: on-failure
-    environment:
-      OAUTH2_PROXY_PROVIDER: "keycloak-oidc"
-      OAUTH2_PROXY_CLIENT_ID: "oauth2-proxy"
-      OAUTH2_PROXY_CLIENT_SECRET: "unused" 
-      OAUTH2_PROXY_OIDC_ISSUER_URL: "http://keycloak:8080/realms/soc"
-      OAUTH2_PROXY_REDIRECT_URL: "http://localhost/oauth2/callback"
-      OAUTH2_PROXY_COOKIE_SECRET: "1f73331cc907f518206471dda833b98d"
-      OAUTH2_PROXY_EMAIL_DOMAINS: "*"
-      OAUTH2_PROXY_PASS_ACCESS_TOKEN: "true"
-      OAUTH2_PROXY_SET_AUTHORIZATION_HEADER: "true"
-      OAUTH2_PROXY_SCOPE: "openid"
-      OAUTH2_PROXY_HTTP_ADDRESS: "0.0.0.0:4180"
-      OAUTH2_PROXY_REVERSE_PROXY: "true"
-    expose:
-      - "4180"
-    depends_on:
-      - keycloak
-
   keycloak:
     image: quay.io/keycloak/keycloak:24.0
     container_name: keycloak
@@ -112,14 +89,15 @@ services:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
     container_name: elasticsearch
     environment:
-      - discovery.type=single-node
-      - xpack.security.enabled=false
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - ELASTIC_PASSWORD=changeme
     ulimits:
       memlock:
         soft: -1
         hard: -1
     volumes:
+      - ./config/elasticsearch-keystore:/usr/share/elasticsearch/config/elasticsearch-keystore:ro
+      - ./config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
       - elasticsearch-data:/usr/share/elasticsearch/data
     expose:
       - "9200"
@@ -131,7 +109,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "curl -s http://localhost:9200/_cluster/health | grep -q 'green\\|yellow'",
+          "curl -u elastic:changeme -s http://localhost:9200/_cluster/health | grep -q 'green\\|yellow'",
         ]
       interval: 30s
       timeout: 10s
@@ -189,18 +167,17 @@ services:
     image: docker.elastic.co/kibana/kibana:8.11.1
     container_name: kibana
     environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-      - XPACK_SECURITY_ENABLED=true
-      # - ELASTICSEARCH_USERNAME=${KIBANA_SYSTEM_USER}
-      # - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD}
-      - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=UfR2qXwQJQ8UgAfs/Ayz5IJ3rsCwmhBrAbJ0AKH8h88=
       - SERVER_BASEPATH=/kibana
       - SERVER_REWRITEBASEPATH=true
+      # - ELASTICSEARCH_USERNAME=${KIBANA_SYSTEM_USER}
+      # - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD}
     expose:
       - "5601"
     depends_on:
       elasticsearch:
         condition: service_healthy
+    volumes:
+      - ./config/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
 
   filebeat:
     image: docker.elastic.co/beats/filebeat:8.11.1

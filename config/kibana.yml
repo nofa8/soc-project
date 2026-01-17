@@ -1,0 +1,17 @@
+server.host: "0.0.0.0"
+server.basePath: "/kibana"
+server.rewriteBasePath: true
+
+elasticsearch.hosts: ["http://elasticsearch:9200"]
+
+# Enable security in Kibana
+xpack.security.enabled: true
+
+# Enable OIDC authentication provider
+xpack.security.authc.providers:
+  oidc.oidc1:
+    order: 0
+    realm: "oidc1"
+
+# Optional: encryption key for saved objects
+xpack.encryptedSavedObjects.encryptionKey: "UfR2qXwQJQ8UgAfs/Ayz5IJ3rsCwmhBrAbJ0AKH8h88="

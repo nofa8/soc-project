@@ -1,0 +1,14 @@
+discovery.type: single-node
+xpack.security.enabled: true
+xpack.security.transport.ssl.enabled: false
+xpack.security.http.ssl.enabled: false
+
+
+xpack.security.authc.realms.oidc.oidc1:
+  order: 0
+  rp.client_id: "kibana-client"
+  rp.client_secret: "kibana-secret"  # pulled from keystore
+  rp.response_type: "code"
+  op.issuer: "http://keycloak:8080/realms/soc"
+  op.authorization_endpoint: "http://keycloak:8080/realms/soc/protocol/openid-connect/auth"
+  op.token_endpoint: "http://keycloak:8080/realms/soc/protocol/openid-connect/token"
