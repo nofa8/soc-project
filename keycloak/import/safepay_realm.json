@@ -1,0 +1,82 @@
+{
+  "realm": "soc",
+  "enabled": true,
+  "displayName": "SOC Realm",
+
+  "roles": {
+    "realm": [{ "name": "kibana-admin" }, { "name": "api-user" }]
+  },
+
+  "groups": [
+    {
+      "name": "kibana-admin",
+      "realmRoles": ["kibana-admin"]
+    },
+    {
+      "name": "api-user",
+      "realmRoles": ["api-user"]
+    }
+  ],
+
+  "clients": [
+    {
+      "clientId": "oauth2-proxy",
+      "name": "OAuth2 Proxy",
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "redirectUris": ["http://localhost/oauth2/callback"],
+      "baseUrl": "/",
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    }
+  ],
+
+  "components": {
+    "org.keycloak.storage.UserStorageProvider": [
+      {
+        "name": "ldap",
+        "providerId": "ldap",
+        "config": {
+          "enabled": ["true"],
+          "priority": ["0"],
+          "vendor": ["other"],
+          "connectionUrl": ["ldap://auth-ldap:389"],
+          "bindDn": ["cn=admin,dc=safepay,dc=local"],
+          "bindCredential": ["admin"],
+          "usersDn": ["ou=users,dc=safepay,dc=local"],
+          "usernameLDAPAttribute": ["uid"],
+          "rdnLDAPAttribute": ["cn"],
+          "uuidLDAPAttribute": ["entryUUID"],
+          "userObjectClasses": ["inetOrgPerson"],
+          "editMode": ["READ_ONLY"],
+          "searchScope": ["1"],
+          "pagination": ["true"],
+          "importEnabled": ["true"],
+          "syncRegistrations": ["false"]
+        }
+      }
+    ],
+
+    "org.keycloak.storage.ldap.mappers.LDAPStorageMapper": [
+      {
+        "name": "ldap-groups",
+        "providerId": "group-ldap-mapper",
+        "config": {
+          "groups.dn": ["ou=groups,dc=safepay,dc=local"],
+          "group.name.ldap.attribute": ["cn"],
+          "group.object.classes": ["groupOfNames"],
+          "membership.ldap.attribute": ["member"],
+          "membership.attribute.type": ["DN"],
+          "membership.user.ldap.attribute": ["dn"],
+          "groups.ldap.filter": [""],
+          "mode": ["READ_ONLY"],
+          "user.roles.retrieve.strategy": ["LOAD_GROUPS_BY_MEMBER_ATTRIBUTE"],
+          "preserve.group.inheritance": ["true"],
+          "drop.non.existing.groups.during.sync": ["true"]
+        }
+      }
+    ]
+  }
+}

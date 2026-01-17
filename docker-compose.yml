@@ -14,14 +14,16 @@ services:
     image: nginx:alpine
     container_name: proxy-nginx
     user: root
+    restart: on-failure
     ports:
       - "80:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro,z
       - ./logs/nginx:/var/log/nginx:z
     depends_on:
-      - api-service
       - kibana
+      - oauth2-proxy
+      - api-service
 
   db-service:
     image: postgres:15-alpine
@@ -35,6 +37,47 @@ services:
     expose:
       - "5432"
 
+  # ========================
+  # AUTHENTICATION SERVICES
+  # ========================
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.6.0
+    container_name: oauth2-proxy
+    restart: on-failure
+    environment:
+      OAUTH2_PROXY_PROVIDER: "keycloak-oidc"
+      OAUTH2_PROXY_CLIENT_ID: "oauth2-proxy"
+      OAUTH2_PROXY_CLIENT_SECRET: "unused" 
+      OAUTH2_PROXY_OIDC_ISSUER_URL: "http://keycloak:8080/realms/soc"
+      OAUTH2_PROXY_REDIRECT_URL: "http://localhost/oauth2/callback"
+      OAUTH2_PROXY_COOKIE_SECRET: "1f73331cc907f518206471dda833b98d"
+      OAUTH2_PROXY_EMAIL_DOMAINS: "*"
+      OAUTH2_PROXY_PASS_ACCESS_TOKEN: "true"
+      OAUTH2_PROXY_SET_AUTHORIZATION_HEADER: "true"
+      OAUTH2_PROXY_SCOPE: "openid"
+      OAUTH2_PROXY_HTTP_ADDRESS: "0.0.0.0:4180"
+      OAUTH2_PROXY_REVERSE_PROXY: "true"
+    expose:
+      - "4180"
+    depends_on:
+      - keycloak
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    container_name: keycloak
+    command:
+      - start-dev
+      - --import-realm
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./keycloak/import:/opt/keycloak/data/import
+    depends_on:
+      - auth-ldap
+
   ldap-admin:
     image: osixia/phpldapadmin:latest
     container_name: ldap-admin
@@ -46,13 +89,11 @@ services:
       - "6443:80"
     depends_on:
       - auth-ldap
-    volumes:
-      - ./ldap-admin-apache.conf:/etc/phpldapadmin/apache.conf:ro
-
 
   auth-ldap:
     image: osixia/openldap:latest
     container_name: auth-ldap
+    command: ["--copy-service"]
     environment:
       LDAP_ORGANISATION: "SafePay"
       LDAP_DOMAIN: "safepay.local"
@@ -62,6 +103,7 @@ services:
       - "636:636"
     volumes:
       - ./logs/ldap:/var/log/ldap:z
+      - ./ldap:/container/service/slapd/assets/config/bootstrap/ldif/custom
 
   # =============================
   # SECURITY & MONITORING
@@ -71,16 +113,8 @@ services:
     container_name: elasticsearch
     environment:
       - discovery.type=single-node
-      - xpack.security.enabled=false ##
+      - xpack.security.enabled=false
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-      # # LDAP configuration
-      # - xpack.security.authc.realms.ldap.ldap1.type=ldap
-      # - xpack.security.authc.realms.ldap.ldap1.order=0
-      # - xpack.security.authc.realms.ldap.ldap1.url=ldap://auth-ldap:389
-      # - xpack.security.authc.realms.ldap.ldap1.bind_dn=cn=admin,dc=safepay,dc=local
-      # - xpack.security.authc.realms.ldap.ldap1.bind_password=admin
-      # - xpack.security.authc.realms.ldap.ldap1.user_search.base_dn=ou=users,dc=safepay,dc=local
-      # - xpack.security.authc.realms.ldap.ldap1.group_search.base_dn=ou=groups,dc=safepay,dc=local
     ulimits:
       memlock:
         soft: -1
@@ -102,8 +136,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-    # depends_on:
-    #   - auth-ldap
 
   ids-suricata:
     image: jasonish/suricata:latest
