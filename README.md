@@ -170,19 +170,19 @@ All critical tests include **automatic verification** via Elasticsearch:
 ```
 soc-project/
 ├── docker-compose.yml       # 13-service orchestration
-├── Makefile                 # Automated testing suite
+├── Makefile                 # Automated testing & ops
+├── State.md                 # Current project status
 ├── backend-fastapi/         # FastAPI with security logging
 ├── nginx/                   # Reverse proxy config
-├── suricata/                # IDS rules
-├── wazuh/                   # SIEM custom rules
-├── firewall/                # iptables scripts
-├── vpn/                     # WireGuard config
+├── suricata/                # IDS configuration & rules
+├── wazuh/                   # SIEM custom rules (100xxx)
+├── firewall/                # iptables logging scripts
 ├── config/                  # Agent configurations
-├── logs/                    # Centralized log directory
-└── docs/                    # Documentation
-    ├── vulnerabilities.md   # Intentional vulns
-    └── tests.md             # Test methodology
+├── logs/                    # Centralized logs (git-ignored)
+└── docs/                    # Documentation (see below)
 ```
+
+> 📖 For detailed structure explanation, see [docs/tree.md](docs/tree.md)
 
 ---
 
@@ -193,7 +193,9 @@ soc-project/
 | FastAPI | JSON | `logs/api/security.json` |
 | Nginx | JSON | `logs/nginx/access.log` |
 | Suricata | EVE JSON | `logs/suricata/eve.jsonl` |
-| Firewall | Syslog | `/var/log/syslog` |
+| Firewall | journald | `journalctl -k` (host) |
+
+> ⚠️ Firewall logs use journald on Fedora. See [docs/limitations.md](docs/limitations.md) for container constraints.
 
 ---
 
@@ -215,7 +217,20 @@ curl http://localhost:8025/api/v2/messages | jq '.count'
 
 ---
 
-## 📚 References
+## 📚 Documentation
+
+| Document | Description |
+|----------|-------------|
+| [docs/tree.md](docs/tree.md) | Project structure overview |
+| [docs/tests.md](docs/tests.md) | Detection validation methodology |
+| [docs/test-results.md](docs/test-results.md) | Latest automated test results |
+| [docs/vulnerabilities.md](docs/vulnerabilities.md) | Intentional vulnerable surfaces |
+| [docs/limitations.md](docs/limitations.md) | Architectural constraints |
+| [docs/debug.md](docs/debug.md) | Troubleshooting guide |
+
+---
+
+## 📖 References
 
 - [NIST SP 800-92](https://csrc.nist.gov/publications/detail/sp/800-92/final) - Log Management
 - [NIST SP 800-61r2](https://csrc.nist.gov/publications/detail/sp/800-61/rev-2/final) - Incident Handling

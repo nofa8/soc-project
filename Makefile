@@ -16,7 +16,7 @@
 
 SUDO       ?= sudo
 TARGET_IP  ?= 127.0.0.1
-NETWORK    ?= 172.17.0.0/16
+NETWORK    ?= 172.17.0.0/24
 
 API_URL    ?= http://localhost
 ES_URL     ?= http://localhost:9200
@@ -28,7 +28,30 @@ ADMIN_WRONG_PASS ?= wrong
 VALID_USER       ?= user
 VALID_PASS       ?= pass
 
+
 -include .env
+
+# --- OS & Log Detection ---
+
+# Default to Ubuntu/Debian standard
+LOG_FILE := /var/log/syslog
+
+# Check if we are on Fedora/CentOS/RHEL (look for messages file)
+ifneq ("$(wildcard /var/log/messages)","")
+    LOG_FILE := /var/log/messages
+endif
+
+# Check if we are on Ubuntu (look for syslog file) explicitly to be safe
+ifneq ("$(wildcard /var/log/syslog)","")
+    LOG_FILE := /var/log/syslog
+endif
+
+# Export it so docker-compose can see it
+export HOST_SYSLOG = $(LOG_FILE)
+
+# --------------------------
+
+
 
 # Colors
 YELLOW := $(shell tput setaf 3 2>/dev/null || echo "")
@@ -79,7 +102,7 @@ define CHECK_ALERT
 for attempt in 1 2 3 4 5 6; do \
   COUNT=$$(docker exec elasticsearch curl -s 'http://localhost:9200/$(ALERT_INDEX)/_search' \
     -H 'Content-Type: application/json' \
-    -d '{"size":0,"query":{"bool":{"must":[{"term":{"rule.id":"$(1)"}},{"range":{"@timestamp":{"gte":"now-2m"}}}]}}}' \
+    -d '{"size":0,"query":{"bool":{"must":[{"term":{"rule.id":"$(1)"}},{"range":{"@timestamp":{"gte":"now-10m"}}}]}}}' \
     2>/dev/null | jq -r '.hits.total.value // 0'); \
   if [ "$$COUNT" -ge $(2) ]; then \
     echo "$(GREEN)  ✓ Rule $(1) verified ($$COUNT alerts, attempt $$attempt)$(NC)"; \

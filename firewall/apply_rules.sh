@@ -7,9 +7,13 @@
 iptables -N SOC_ALLOW 2>/dev/null
 iptables -F SOC_ALLOW
 
-# 2. Insert Jump from DOCKER-USER (if exists)
+# 2. Insert Jump from DOCKER-USER (if exists) for container traffic
 iptables -C DOCKER-USER -j SOC_ALLOW 2>/dev/null || \
 iptables -I DOCKER-USER 1 -j SOC_ALLOW
+
+# 3. Insert Jump from INPUT for localhost traffic (needed for test-fw-block)
+iptables -C INPUT -j SOC_ALLOW 2>/dev/null || \
+iptables -I INPUT 1 -j SOC_ALLOW
 
 echo "Applying Hardened SOC Firewall Rules..."
 
@@ -28,7 +32,14 @@ iptables -A SOC_ALLOW -o br+ -j ACCEPT
 # ==========================================
 # 2. STANDARD ALLOW RULES
 # ==========================================
-# Loopback
+
+# LOG & DROP blocked ports (BEFORE loopback accept to catch localhost tests)
+iptables -A SOC_ALLOW -p tcp --dport 22 -j LOG --log-prefix "FIREWALL-DROP: " --log-level 4
+iptables -A SOC_ALLOW -p tcp --dport 22 -j DROP
+iptables -A SOC_ALLOW -p tcp --dport 3306 -j LOG --log-prefix "FIREWALL-DROP: " --log-level 4
+iptables -A SOC_ALLOW -p tcp --dport 3306 -j DROP
+
+# Loopback (for everything else)
 iptables -A SOC_ALLOW -i lo -j ACCEPT
 # Established connections (replies)
 iptables -A SOC_ALLOW -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
