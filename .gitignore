@@ -8,3 +8,6 @@ wazuh-data/
 .env
 
 commands.md
+
+# VPN Secrets (Private Keys & Configs)
+vpn/config/

@@ -72,7 +72,7 @@ services:
       - PEERS=1
       - LOG_CONFS=true
     volumes:
-      - ./vpn/config:/config
+      - ./vpn/config:/config:z
     ports:
       - "51820:51820/udp"
     networks:
