@@ -1,0 +1,12 @@
+[Unit]
+Description=Export firewall logs from journald to file
+After=systemd-journald.service
+
+[Service]
+Type=simple
+ExecStart=/bin/bash -c 'journalctl -k -f -o short | grep --line-buffered "FIREWALL-DROP" >> /var/log/firewall/firewall.log'
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

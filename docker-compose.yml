@@ -163,11 +163,8 @@ services:
     volumes:
       - ./config/agent/ossec.conf:/var/ossec/etc/ossec.conf:z
       - ./logs:/var/log/soc_logs:ro
-      # Journald for native kernel log ingestion (firewall events)
-      - /run/log/journal:/run/log/journal:ro
-      - /var/log/journal:/var/log/journal:ro
-      # Machine-id for journald compatibility
-      - /etc/machine-id:/etc/machine-id:ro
+      # Firewall logs from host (via systemd export service)
+      - /var/log/firewall/firewall.log:/var/log/firewall.log:ro
     security_opt:
       - label:disable
     depends_on:

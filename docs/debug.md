@@ -30,9 +30,20 @@ iptables LOG → kernel → journald → (no file output)
 - Wazuh agent in container cannot read host journald
 - Mounted journal directories + machine-id are insufficient
 
-### Workarounds
-1. **Run Wazuh agent on host** (not in container)
-2. **Use journald export to file** via systemd service
+### Solution Implemented: Systemd Export Service
+To bridge the container isolation gap, we use a lightweight systemd service on the host:
+
+```bash
+journald (socket) → firewall-log-export.service → /var/log/firewall/firewall.log → Docker Volume → Wazuh Agent
+```
+
+**Required Host Setup:**
+```bash
+sudo mkdir -p /var/log/firewall
+sudo cp firewall/firewall-log-export.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now firewall-log-export.service
+```
 
 ---
 

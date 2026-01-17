@@ -26,18 +26,19 @@ Docker containers are **intentionally excluded** from cross-namespace access.
 - Rule **100030** (Firewall Packet Drop) cannot be triggered from containerized agent
 - Rule **100031** (Port Scan Detection) similarly affected
 
-### Mitigations
-| Option | Complexity | Effectiveness |
-|--------|------------|---------------|
-| Run Wazuh agent on host | Low | ✅ Full |
-| Export journald to file (systemd service) | Medium | ✅ Full |
-| Forward via rsyslog | Medium | ✅ Full |
-| Mount journal directories | N/A | ❌ Does not work |
+### Status
+**✅ SOLVED** via Systemd Log Export.
 
-### Academic Defense
-> "This is a platform limitation, not a configuration error. systemd-journald's security model prevents cross-namespace log access by design."
+The workaround documentation below is kept for historical context.
 
-**Sources:** systemd-journald(8), NIST SP 800-92
+### Implemented Solution (Filesystem Bridge)
+1. Host `systemd` service exports journald → `/var/log/firewall/firewall.log` via `syslog` format.
+2. Docker volume mounts file → Container `/var/log/firewall.log`.
+3. Wazuh reads via standard `syslog` localfile config.
+4. **Result:** Full detection enabled (Rule 100030 verified).
+
+### Technical Note
+While direct journald access remains impossible, this bridging solution provides robust, production-grade ingestion without violating container isolation.
 
 ---
 

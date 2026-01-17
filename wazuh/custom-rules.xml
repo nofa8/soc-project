@@ -80,7 +80,8 @@
   <!-- ============================================ -->
 
   <rule id="100030" level="3">
-    <match>FIREWALL-DROP:</match>
+    <if_sid>4100</if_sid>
+    <action>FIREWALL-DROP:</action>
     <description>Firewall Packet Drop</description>
     <options>no_full_log</options>
     <group>firewall,blocked,</group>
