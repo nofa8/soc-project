@@ -9,17 +9,35 @@
 ```
 soc-project/
 ├── README.md                 # Project overview & quick start
-├── docker-compose.yml        # 13-service orchestration
-├── Makefile                  # Automated testing & operations
+├── docker-compose.yml        # 14-service orchestration
+├── Makefile                  # Orchestration layer (v4.1)
 ├── .env.example              # Environment template
 │
-├── backend-fastapi/          # 🔵 Application Layer
+├── attacks/                  # 🔴 Threat Stimulus Generation
+│   ├── brute_force.sh        # Deterministic brute-force
+│   ├── brute_force_hydra.sh  # Hydra-based (realistic, optional)
+│   ├── sqli.sh               # SQL injection payloads
+│   ├── vpn_noise.sh          # VPN UDP probes
+│   └── firewall_scan.sh      # Blocked port attempts
+│
+├── scripts/                  # 🔵 Verification & Health Checks
+│   ├── check_alert.sh        # Detection assertion (ES query)
+│   ├── check_pipeline.sh     # SIEM pipeline health
+│   └── lib/                  # Shared primitives (NO logic)
+│       ├── timing.sh         # Backoff utilities
+│       └── colors.sh         # Terminal UX
+│
+├── backend-fastapi/          # 🟢 Application Layer
 │   ├── main.py               # FastAPI with security logging
 │   ├── requirements.txt      # Python dependencies
 │   └── Dockerfile            # Container build
 │
-├── nginx/                    # 🔵 Reverse Proxy
+├── nginx/                    # 🟢 Reverse Proxy
 │   └── nginx.conf            # JSON access logs, security headers
+│
+├── keycloak/                 # 🔐 Identity Provider
+│   └── import/               # Realm configuration
+│       └── safepay_realm.json
 │
 ├── config/                   # ⚙️ Configuration
 │   ├── agent/                # Wazuh agent ossec.conf
@@ -36,16 +54,13 @@ soc-project/
 │
 ├── firewall/                 # 🧱 Perimeter Security
 │   ├── apply_rules.sh        # iptables rules with logging
-│   └── 10-firewall.conf      # rsyslog config (optional)
+│   └── firewall-log-export.service  # Systemd bridge service
 │
 ├── filebeat/                 # 📤 Log Shipper
 │   └── filebeat.yml          # ES output configuration
 │
 ├── vpn/                      # 🔐 Remote Access
-│   └── config/               # WireGuard peer configs
-│
-├── scripts/                  # 🔧 Utilities
-│   └── *.sh                  # Helper scripts
+│   └── config/               # WireGuard peer configs (auto-generated)
 │
 ├── tests/                    # 🧪 Test Scripts
 │   └── verify-wazuh-rules.sh # Rule validation
@@ -56,6 +71,7 @@ soc-project/
 │   └── suricata/             # EVE JSON alerts
 │
 ├── docs/                     # 📚 Documentation
+│   ├── architecture.md       # Design rationale (NEW)
 │   ├── debug.md              # Troubleshooting guide
 │   ├── limitations.md        # Architectural constraints
 │   ├── test-results.md       # Latest test output
@@ -63,19 +79,30 @@ soc-project/
 │   ├── tree.md               # This file
 │   └── vulnerabilities.md    # Intentional vulns
 │
-├── State.md                  # Project status
-└── Tasks.md                  # Development phases
+└── State.md                  # Project status
 ```
 
 ---
 
 ## Key Directories
 
+### `attacks/`
+Threat stimulus scripts. Each generates controlled attack traffic for detection validation. **Red team tooling.**
+
+### `scripts/`
+Verification and health check scripts. Used by Makefile to assert detection. **Blue team tooling.**
+
+### `scripts/lib/`
+Shared primitives only. No logic, no queries, no assertions. Only timing and UX helpers.
+
 ### `backend-fastapi/`
 The vulnerable application with security logging. Generates JSON events for login attempts, SQL injection detection, and privilege escalation.
 
 ### `wazuh/`
 Contains custom detection rules (IDs 100xxx). These rules correlate events from API logs, Suricata, and firewall to detect attacks.
+
+### `keycloak/`
+Identity provider configuration. Manages SSO for Kibana and API authentication.
 
 ### `config/`
 Agent and manager OSSEC configurations. The agent config determines which log files are monitored.
@@ -94,7 +121,7 @@ All project documentation. See the Documentation Index in README.md.
 |------|---------|-----------|
 | `.env` | Environment variables | Setting interface, ports |
 | `docker-compose.yml` | Service definitions | Adding/modifying containers |
-| `Makefile` | Test automation | Adding new test targets |
+| `Makefile` | Orchestration layer | Adding new test targets |
 | `wazuh/custom-rules.xml` | Detection rules | Adding new alerts |
 | `suricata/rules/local.rules` | IDS signatures | Adding network detection |
 
@@ -106,7 +133,8 @@ All project documentation. See the Documentation Index in README.md.
 Application → logs/api/security.json → Wazuh Agent → Manager → ES
 Nginx      → logs/nginx/access.log  → Wazuh Agent → Manager → ES  
 Suricata   → logs/suricata/eve.jsonl → Wazuh Agent → Manager → ES
-Firewall   → journald (host)         → [requires host agent]
+Firewall   → /var/log/firewall/      → Wazuh Agent → Manager → ES
+           (via systemd export service)
 ```
 
 ---

@@ -1,8 +1,9 @@
 # Final System Verification Report
 
-> **Date:** 2026-01-17 19:05 UTC  
+> **Date:** 2026-01-18 (Updated for v4.1)  
 > **System:** Fedora 43 / Docker Compose  
-> **Status:** 🟢 OPERATIONAL / FULLY VERIFIED
+> **Status:** 🟢 OPERATIONAL / FULLY VERIFIED  
+> **Note:** Test semantics unchanged; execution layer refactored for isolation.
 
 ---
 
@@ -92,3 +93,20 @@ To replicate these results:
 ## 7. Known Limitations (Remediated)
 *Resolved:* Firewall logging is no longer a limitation.
 *Remaining:* `nmap-ports` requires interactive sudo password (automation constraint only).
+
+---
+
+## 8. v4.1 Validation (2026-01-18)
+
+Tests now use modular scripts (`attacks/`, `scripts/`) instead of inline Makefile logic.
+
+| Target | Script | Rule | Status |
+|--------|--------|------|--------|
+| `brute-force` | `attacks/brute_force.sh` | 100004 | ✅ PASS |
+| `test-sqli` | `attacks/sqli.sh` | 100005 | ✅ PASS |
+| `test-firewall` | `attacks/firewall_scan.sh` | 100030 | ✅ PASS |
+| `test-brute-hydra` | `attacks/brute_force_hydra.sh` | 100004 | ✅ PASS |
+
+**Hydra Result:** Successfully authenticated (`admin:password`), detection verified.
+
+**Behavioral Delta:** None. All detection semantics preserved.

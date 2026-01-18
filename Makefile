@@ -1,11 +1,30 @@
 # ============================================================================
-# SOC Project Makefile – Production Grade (v3.0)
+# SOC Project Makefile – Orchestration Layer (v4.1)
 # ============================================================================
-# This Makefile serves as:
-#   - A SOC runbook
-#   - A verification harness
-#   - An attack simulation driver
-#   - A teaching artifact
+# Design Principle:
+#   This Makefile orchestrates SOC workflows.
+#   All detection logic, retries, assertions, and data parsing
+#   must live in external scripts (scripts/, attacks/).
+#
+# Architecture Boundaries:
+#   - Makefile      → orchestration, sequencing, UX
+#   - attacks/      → stimulus generation only
+#   - scripts/      → verification and health checks
+#   - scripts/lib/  → reusable utilities (timing, colors)
+#   - Wazuh rules   → correlation, severity, logic
+#   - Elastic       → analytics and visualization
+#
+# Exit Code Standard (Global):
+#   0  = Success
+#   1  = Detection / assertion failure
+#   2  = Invalid usage / missing tool
+#   ≥10 = Infrastructure failure
+#
+# Non-Goals (delegated to appropriate layers):
+#   - Alert correlation
+#   - Severity calculation
+#   - SOC policy decisions
+#   - Stateful analysis
 # ============================================================================
 
 .SILENT:
@@ -27,6 +46,27 @@ ADMIN_USER       ?= admin
 ADMIN_WRONG_PASS ?= wrong
 VALID_USER       ?= user
 VALID_PASS       ?= pass
+
+# --------------------
+# Execution Mode
+# --------------------
+# MODE alters timing and strictness, never detection semantics.
+# | MODE      | Purpose            | Characteristics               |
+# |-----------|--------------------|------------------------------ |
+# | demo      | Live demonstration | Short waits, pretty output    |
+# | assurance | Validation         | Long polling, strict failures |
+MODE ?= demo
+
+ifeq ($(MODE),assurance)
+  ALERT_RETRIES  := 12
+  ALERT_INTERVAL := 10
+else
+  ALERT_RETRIES  := 6
+  ALERT_INTERVAL := 5
+endif
+
+# Export for scripts
+export API_URL ES_URL KIBANA_URL TARGET_IP ADMIN_USER ALERT_RETRIES ALERT_INTERVAL
 
 
 -include .env
@@ -302,15 +342,17 @@ server-error-test:
 	fi
 
 brute-force:
-	echo "$(YELLOW)[API] Simulating Brute Force (5 attempts)...$(NC)"
-	for i in 1 2 3 4 5; do \
-		curl -s -X POST $(API_URL)/login \
-			-H "Content-Type: application/json" \
-			-d '{"username":"$(ADMIN_USER)","password":"attempt'$$i'"}' > /dev/null 2>&1; \
-		echo "  Attempt $$i sent"; \
-	done
-	echo "$(GREEN)[BRUTE FORCE COMPLETE - Verifying Detection]$(NC)"
-	$(call CHECK_ALERT,100004,1)
+	@echo "[Stimulus] Brute-force authentication"
+	@bash attacks/brute_force.sh
+	@echo "[Assertion] Brute-force detection"
+	@bash scripts/check_alert.sh 100004 1
+
+# Hydra-based brute force (optional, requires hydra installed)
+test-brute-hydra:
+	@echo "[Stimulus] Hydra brute-force (realistic)"
+	@bash attacks/brute_force_hydra.sh || echo "  Hydra skipped (exit 2)"
+	@echo "[Assertion] Brute-force detection"
+	@bash scripts/check_alert.sh 100004 1
 
 test-user-agent:
 	curl -s http://testmynids.org/uid/index.html > /dev/null
@@ -415,10 +457,8 @@ test-noise:
 
 # 3. Detection Test: SQL Injection
 test-sqli:
-	echo "$(YELLOW)=== DETECTION TEST: SQL INJECTION ===$(NC)"
-	@curl -s "$(API_URL)/items/1'%20OR%20'1'='1" | jq '.'
-	echo "$(GREEN)[SQLi SENT - Verifying Detection]$(NC)"
-	$(call CHECK_ALERT,100005,1)
+	@bash attacks/sqli.sh
+	@bash scripts/check_alert.sh 100005 1
 
 # 4. Detection Test: Privilege Escalation
 test-privilege:
@@ -429,18 +469,12 @@ test-privilege:
 
 # 5. Detection Test: VPN Brute Force (UDP noise)
 test-vpn:
-	echo "$(YELLOW)=== DETECTION TEST: VPN UDP NOISE ===$(NC)"
-	@for i in 1 2 3 4 5; do \
-		echo "probe_$$i" | nc -u -w1 127.0.0.1 51820 2>/dev/null || true; \
-		echo "  VPN probe $$i sent"; \
-	done
-	echo "$(GREEN)[VPN NOISE COMPLETE - Expect: Rule 100020/100021]$(NC)"
+	@bash attacks/vpn_noise.sh
 
 # 6. Detection Test: Firewall Scan
 test-firewall:
-	echo "$(YELLOW)=== DETECTION TEST: FIREWALL SCAN ===$(NC)"
-	@nmap -p 22,3306 127.0.0.1 -T4 2>/dev/null || echo "  nmap not installed - using curl fallback"
-	echo "$(GREEN)[FIREWALL SCAN COMPLETE - Expect: Rule 100030/100031]$(NC)"
+	@bash attacks/firewall_scan.sh
+	@bash scripts/check_alert.sh 100030 1
 
 # 7. Kill Chain Test - Full multi-layer correlation
 test-killchain:

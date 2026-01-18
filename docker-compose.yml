@@ -50,7 +50,6 @@ services:
     volumes:
       - ./firewall/apply_rules.sh:/scripts/apply_rules.sh:ro,z
 
-
   # ==============
   # Reverse Proxy
   # ==============
@@ -66,7 +65,6 @@ services:
     depends_on:
       - api-service
       - kibana
-
 
   # ============
   # API Service
@@ -91,14 +89,13 @@ services:
     expose:
       - "5432"
 
-
   # ===============
   # Access Control
   # ===============
   auth-ldap:
     image: osixia/openldap:latest
     container_name: auth-ldap
-    command: ["--copy-service"]
+    command: [ "--copy-service" ]
     environment:
       LDAP_ORGANISATION: "SafePay"
       LDAP_DOMAIN: "safepay.local"
@@ -125,7 +122,7 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./keycloak/import:/opt/keycloak/data/import
+      - ./keycloak/import:/opt/keycloak/data/import:z
     depends_on:
       - auth-ldap
 
@@ -237,7 +234,6 @@ services:
       - ./wazuh/local_internal_options.conf:/var/ossec/etc/local_internal_options.conf:z
       - ./config/wazuh_manager/filebeat-service:/etc/services.d/filebeat:ro
 
-
   # =============
   # Mail Server
   # =============
@@ -253,7 +249,6 @@ services:
       - "1025"
     networks:
       - default
-
 
 volumes:
   wazuh-data:

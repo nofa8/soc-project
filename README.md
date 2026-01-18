@@ -30,8 +30,8 @@ A containerized security monitoring environment demonstrating log collection, co
 
 | Metric | Value |
 |--------|-------|
-| **Containers** | 13 services |
-| **Detection Rules** | 10 custom rules |
+| **Containers** | 14 services |
+| **Detection Rules** | 10 rules formally validated via scripted tests |
 | **Coverage** | App, Network, VPN, Firewall |
 | **Validation** | `make test-all` (automated) |
 
@@ -202,6 +202,7 @@ make test-all    # Run ALL detection tests
 | Privilege Escalation | `make test-privilege` | 100010 |
 | SQL Injection | `make test-sqli` | 100005 |
 | Brute Force | `make brute-force` | 100004 |
+| Brute Force (Hydra) | `make test-brute-hydra` | 100004 |
 | Firewall Block | `make test-fw-block` | 100030 |
 | VPN Noise | `make test-vpn` | 100020 |
 | Kill Chain | `make test-killchain` | Multiple |
@@ -271,6 +272,7 @@ curl http://localhost:8025/api/v2/messages | jq '.count'
 
 | Document | Description |
 |----------|-------------|
+| [docs/architecture.md](docs/architecture.md) | Design rationale & boundaries |
 | [docs/tree.md](docs/tree.md) | Project structure overview |
 | [docs/tests.md](docs/tests.md) | Detection validation methodology |
 | [docs/test-results.md](docs/test-results.md) | Latest automated test results |
