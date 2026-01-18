@@ -6,6 +6,26 @@ A containerized security monitoring environment demonstrating log collection, co
 
 ---
 
+## TOC
+
+- [Executive Summary](#-executive-summary)
+- [Architecture](#️-architecture)
+- [Technology Stack](#️-technology-stack)
+- [Quick Start](#-quick-start)
+- [Running in a VM](#️-running-in-a-vm-ubuntu-2404)
+- [Access Points](#access-points)
+- [Detection Rules (Tuned for SOC Maturity)](#-detection-rules-tuned-for-soc-maturity)
+  - [Severity Balancing](#severity-balancing)
+- [Automated Testing](#-automated-testing)
+- [Project Structure](#-project-structure)
+- [Log Sources](#-log-sources)
+- [Troubleshooting](#-troubleshooting)
+- [Documentation](#-documentation)
+- [References](#-references)
+- [License](#-license)
+
+---
+
 ## 📋 Executive Summary
 
 | Metric | Value |
@@ -105,6 +125,36 @@ make preflight
 # 5. Run detection tests
 make test-all
 ```
+
+## 🖥️ Running in a VM (Ubuntu 24.04)
+
+Follow these steps to prepare an Ubuntu 24.04 VM and run the project using `vm_startup.sh` and Docker Compose.
+
+- **Prepare the VM**: create or boot an Ubuntu 24.04 VM and copy the repository into it (or clone there).
+- **Install Docker & dependencies**: make sure the startup script is executable and run it:
+
+```bash
+./vm_startup.sh
+```
+
+The script installs Docker, the Docker Compose plugin and adds your user to the `docker` group. After the script finishes you must either reboot or log out and log back in to apply group membership.
+
+- **From the project root on the VM**: pull images (optional) and start the stack:
+
+```bash
+docker compose pull   # optional: pull images first
+docker compose up -d  # start all services in background
+docker compose ps     # verify running services
+```
+
+- **Verify and run tests**:
+
+```bash
+make preflight  # quick health checks
+make test-all   # run detection tests
+```
+
+See the startup script at [vm_startup.sh](vm_startup.sh) for details on what it installs.
 
 ### Access Points
 
