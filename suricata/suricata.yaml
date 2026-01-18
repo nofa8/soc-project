@@ -24,7 +24,7 @@ vars:
 # Rule files - load all .rules files from /etc/suricata/rules/
 default-rule-path: /etc/suricata/rules
 rule-files:
-  - suricata.rules
+  - /var/lib/suricata/rules/suricata.rules
   - local.rules
 
 # Stats configuration

@@ -1,0 +1,42 @@
+# ========================
+# Organizational Units
+# ========================
+dn: ou=users,dc=safepay,dc=local
+objectClass: organizationalUnit
+ou: users
+
+dn: ou=groups,dc=safepay,dc=local
+objectClass: organizationalUnit
+ou: groups
+
+# ========================
+# Users
+# ========================
+dn: cn=john,ou=users,dc=safepay,dc=local
+objectClass: inetOrgPerson
+cn: john
+sn: Doe
+uid: john
+mail: john@example.com
+userPassword: {SSHA}bNlYNhl+Z/MhcS5U0Bkhtc93flBy0Pvn
+
+dn: cn=alice,ou=users,dc=safepay,dc=local
+objectClass: inetOrgPerson
+cn: alice
+sn: Smith
+uid: alice
+mail: alice@example.com
+userPassword: {SSHA}bNlYNhl+Z/MhcS5U0Bkhtc93flBy0Pvn
+
+# ========================
+# Groups
+# ========================
+dn: cn=kibana-admin,ou=groups,dc=safepay,dc=local
+objectClass: groupOfNames
+cn: kibana-admin
+member: cn=john,ou=users,dc=safepay,dc=local
+
+dn: cn=api-user,ou=groups,dc=safepay,dc=local
+objectClass: groupOfNames
+cn: api-user
+member: cn=alice,ou=users,dc=safepay,dc=local

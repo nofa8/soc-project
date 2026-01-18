@@ -1,64 +1,23 @@
 services:
-  # =============================
-  # APPLICATION & INFRASTRUCTURE
-  # =============================
-  api-service:
-    build: ./backend-fastapi
-    container_name: api-service
-    volumes:
-      - ./logs/api:/app/logs:z
-    expose:
-      - "8000"
-
-  proxy-nginx:
-    image: nginx:alpine
-    container_name: proxy-nginx
+  # ================================
+  # Network Perimeter-level Control
+  # ================================
+  ids-suricata:
+    image: jasonish/suricata:latest
+    container_name: ids-suricata
     user: root
-    ports:
-      - "80:80"
+    network_mode: ${SURICATA_NETWORK_MODE:-host}
+    cap_add:
+      - NET_ADMIN
+      - SYS_NICE
+      - NET_RAW
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro,z
-      - ./logs/nginx:/var/log/nginx:z
-    depends_on:
-      - api-service
-      - kibana
+      - ./suricata:/etc/suricata:z
+      - ./logs/suricata:/var/log/suricata:z
+      - ./pcap:/pcap:ro
+    entrypoint: [ "/etc/suricata/entrypoint.sh" ]
+    command: ${SURICATA_COMMAND}
 
-  db-service:
-    image: postgres:15-alpine
-    container_name: db-service
-    environment:
-      POSTGRES_DB: safepay
-      POSTGRES_USER: safepay
-      POSTGRES_PASSWORD: safepay
-    volumes:
-      - ./logs/db:/var/log/postgresql:z
-    expose:
-      - "5432"
-
-  auth-ldap:
-    image: osixia/openldap:latest
-    container_name: auth-ldap
-    environment:
-      LDAP_ORGANISATION: "SafePay"
-      LDAP_DOMAIN: "safepay.local"
-      LDAP_ADMIN_PASSWORD: admin
-    volumes:
-      - ./logs/ldap:/var/log/ldap:z
-
-  mail-server:
-    image: mailhog/mailhog:latest
-    container_name: mailhog
-    hostname: mail-server
-    user: root
-    environment:
-      - MH_SMTP_BIND_ADDR=0.0.0.0:25
-    ports:
-      - "8025:8025"
-      - "1025:25"
-    networks:
-      - default
-
-  # Phase 3.3: VPN Service (WireGuard)
   vpn-wireguard:
     image: linuxserver/wireguard:latest
     container_name: vpn-wireguard
@@ -78,9 +37,10 @@ services:
     networks:
       - default
 
-  # Phase 3.4: Firewall Layer (Docker-Compatible)
-  # Uses DOCKER-USER chain and interface-based filtering (br+, docker0)
   firewall:
+    # Simple iptables-based firewall container for easier management of host
+    # firewall rules.
+    # Uses DOCKER-USER chain and interface-based filtering (br+, docker0)
     image: debian:bookworm-slim
     container_name: firewall-iptables
     cap_add:
@@ -90,9 +50,118 @@ services:
     volumes:
       - ./firewall/apply_rules.sh:/scripts/apply_rules.sh:ro,z
 
-  # =============================
-  # SECURITY & MONITORING
-  # =============================
+
+  # ==============
+  # Reverse Proxy
+  # ==============
+  proxy-nginx:
+    image: nginx:alpine
+    container_name: proxy-nginx
+    user: root
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro,z
+      - ./logs/nginx:/var/log/nginx:z
+    depends_on:
+      - api-service
+      - kibana
+
+
+  # ============
+  # API Service
+  # ============
+  api-service:
+    build: ./backend-fastapi
+    container_name: api-service
+    volumes:
+      - ./logs/api:/app/logs:z
+    expose:
+      - "8000"
+
+  db-service:
+    image: postgres:15-alpine
+    container_name: db-service
+    environment:
+      POSTGRES_DB: safepay
+      POSTGRES_USER: safepay
+      POSTGRES_PASSWORD: safepay
+    volumes:
+      - ./logs/db:/var/log/postgresql:z
+    expose:
+      - "5432"
+
+
+  # ===============
+  # Access Control
+  # ===============
+  auth-ldap:
+    image: osixia/openldap:latest
+    container_name: auth-ldap
+    command: ["--copy-service"]
+    environment:
+      LDAP_ORGANISATION: "SafePay"
+      LDAP_DOMAIN: "safepay.local"
+      LDAP_ADMIN_PASSWORD: admin
+    expose:
+      - "389"
+      - "636"
+    volumes:
+      - ./logs/ldap:/var/log/ldap:z
+      - ./ldap:/container/service/slapd/assets/config/bootstrap/ldif/custom
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    container_name: keycloak
+    command:
+      - start-dev
+      - --import-realm
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    # expose:
+    #   - "8080"
+    # Exposing on host for direct access for testing purposes
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./keycloak/import:/opt/keycloak/data/import
+    depends_on:
+      - auth-ldap
+
+  # Interface for LDAP management
+  # Used for development/testing purposes only
+  # ldap-admin:
+  #   image: osixia/phpldapadmin:latest
+  #   container_name: ldap-admin
+  #   environment:
+  #     - PHPLDAPADMIN_HTTPS=false
+  #     - PHPLDAPADMIN_LDAP_HOSTS=auth-ldap
+  #     - PHPLDAPADMIN_ALLOW_REMOTE=true
+  #   ports:
+  #     - "6443:80"
+  #   depends_on:
+  #     - auth-ldap
+
+
+  # =========================
+  # Security & SIEM Pipeline
+  # =========================
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.11.1
+    container_name: filebeat
+    user: root
+    #environment:
+    #  - ELASTICSEARCH_HOST=http://wazuh.indexer:9200
+    command: [ "filebeat", "-e", "-strict.perms=false" ]
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    volumes:
+      - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro,z
+      - ./logs:/logs:ro,z
+      - wazuh-logs:/usr/share/filebeat/wazuh-logs/alerts:ro
+
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
     container_name: elasticsearch
@@ -121,36 +190,21 @@ services:
       timeout: 10s
       retries: 5
 
-  ids-suricata:
-    image: jasonish/suricata:latest
-    container_name: ids-suricata
-    user: root
-    network_mode: ${SURICATA_NETWORK_MODE:-host}
-    cap_add:
-      - NET_ADMIN
-      - SYS_NICE
-      - NET_RAW
-    volumes:
-      - ./suricata:/etc/suricata:z
-      - ./logs/suricata:/var/log/suricata:z
-      - ./pcap:/pcap:ro
-    entrypoint: [ "/etc/suricata/entrypoint.sh" ]
-    command: ${SURICATA_COMMAND}
-
-  wazuh-manager:
-    image: wazuh/wazuh-manager:4.14.1
-    container_name: wazuh-manager
+  kibana:
+    # SIEM Visualization Dashboard
+    image: docker.elastic.co/kibana/kibana:8.11.1
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - XPACK_SECURITY_ENABLED=false
+      - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=UfR2qXwQJQ8UgAfs/Ayz5IJ3rsCwmhBrAbJ0AKH8h88=
+      - SERVER_BASEPATH=/kibana
+      - SERVER_REWRITEBASEPATH=true
     expose:
-      - "1514/tcp"
-      - "1515/tcp"
-      - "55000"
-    volumes:
-      - wazuh-data:/var/ossec/data
-      - wazuh-logs:/var/ossec/logs/alerts
-      - ./config/wazuh_cluster/wazuh_manager.conf:/var/ossec/etc/ossec.conf:z
-      - ./wazuh/custom-rules.xml:/var/ossec/etc/rules/custom_rules.xml:z
-      - ./wazuh/local_internal_options.conf:/var/ossec/etc/local_internal_options.conf:z
-      - ./config/wazuh_manager/filebeat-service:/etc/services.d/filebeat:ro
+      - "5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
 
   wazuh-agent:
     image: wazuh/wazuh-agent:4.14.1
@@ -168,40 +222,38 @@ services:
     depends_on:
       - wazuh-manager
 
-  # =============================
-  # SIEM & VISUALIZATION
-  # =============================
-  # elasticsearch: Moved to SECURITY & MONITORING section above (aliased as wazuh.indexer)
-
-  kibana:
-    image: docker.elastic.co/kibana/kibana:8.11.1
-    container_name: kibana
-    environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-      - XPACK_SECURITY_ENABLED=false
-      - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=UfR2qXwQJQ8UgAfs/Ayz5IJ3rsCwmhBrAbJ0AKH8h88=
-      - SERVER_BASEPATH=/kibana
-      - SERVER_REWRITEBASEPATH=true
+  wazuh-manager:
+    image: wazuh/wazuh-manager:4.14.1
+    container_name: wazuh-manager
     expose:
-      - "5601"
-    depends_on:
-      elasticsearch:
-        condition: service_healthy
-
-  filebeat:
-    image: docker.elastic.co/beats/filebeat:8.11.1
-    container_name: filebeat
-    user: root
-    #environment:
-    #  - ELASTICSEARCH_HOST=http://wazuh.indexer:9200
-    command: [ "filebeat", "-e", "-strict.perms=false" ]
-    depends_on:
-      elasticsearch:
-        condition: service_healthy
+      - "1514/tcp"
+      - "1515/tcp"
+      - "55000"
     volumes:
-      - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro,z
-      - ./logs:/logs:ro,z
-      - wazuh-logs:/usr/share/filebeat/wazuh-logs/alerts:ro
+      - wazuh-data:/var/ossec/data
+      - wazuh-logs:/var/ossec/logs/alerts
+      - ./config/wazuh_cluster/wazuh_manager.conf:/var/ossec/etc/ossec.conf:z
+      - ./wazuh/custom-rules.xml:/var/ossec/etc/rules/custom_rules.xml:z
+      - ./wazuh/local_internal_options.conf:/var/ossec/etc/local_internal_options.conf:z
+      - ./config/wazuh_manager/filebeat-service:/etc/services.d/filebeat:ro
+
+
+  # =============
+  # Mail Server
+  # =============
+  mail-server:
+    image: mailhog/mailhog:latest
+    container_name: mailhog
+    hostname: mail-server
+    user: root
+    environment:
+      - MH_SMTP_BIND_ADDR=0.0.0.0:25
+    ports:
+      - "8025"
+      - "1025"
+    networks:
+      - default
+
 
 volumes:
   wazuh-data:
