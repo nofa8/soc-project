@@ -29,7 +29,6 @@
     <group>api,authentication_failed,</group>
   </rule>
 
-  <!-- Note: same_field used for JSON src_ip (not same_srcip which requires syslog srcip) -->
   <rule id="100004" level="12" frequency="5" timeframe="60">
     <if_matched_sid>100003</if_matched_sid>
     <same_field>src_ip</same_field>
@@ -69,7 +68,7 @@
 
   <rule id="100021" level="10" frequency="5" timeframe="60">
     <if_matched_sid>100020</if_matched_sid>
-    <same_srcip />
+    <same_field>src_ip</same_field>
     <description>VPN Brute Force Attack Detected</description>
     <mitre><id>T1110</id></mitre>
     <group>vpn,bruteforce,</group>
@@ -89,7 +88,7 @@
 
   <rule id="100031" level="10" frequency="15" timeframe="60">
     <if_matched_sid>100030</if_matched_sid>
-    <same_srcip />
+    <same_field>src_ip</same_field>
     <description>Port Scan Detected (Firewall Flood)</description>
     <mitre><id>T1046</id></mitre>
     <group>firewall,reconnaissance,</group>
